@@ -16,21 +16,20 @@ class Rulers {
   fromString(string) {
     this.data = [];
 
+    const typeMap = {
+      Ruler: Ruler,
+      Opisometer: Opisometer,
+      RouteOpisometer: RouteOpisometer,
+      Planimeter: Planimeter
+    };
+
     const rulers = string.split("; ");
     for (const rulerString of rulers) {
       const [type, pointsString] = rulerString.split(": ");
+      if (!type || !pointsString) continue;
+
       const points = pointsString.split(" ").map(el => el.split(",").map(n => +n));
-      const Type =
-        type === "Ruler"
-          ? Ruler
-          : type === "Opisometer"
-          ? Opisometer
-          : type === "RouteOpisometer"
-          ? RouteOpisometer
-          : type === "Planimeter"
-          ? Planimeter
-          : null;
-      this.create(Type, points);
+      this.create(typeMap[type], points);
     }
   }
 
@@ -528,8 +527,7 @@ class Planimeter extends Measurer {
     if (this.points.length < 3) return;
 
     const polygonArea = rn(Math.abs(d3.polygonArea(this.points)));
-    const unit = areaUnit.value === "square" ? " " + distanceUnitInput.value + "²" : " " + areaUnit.value;
-    const area = si(polygonArea * distanceScaleInput.value ** 2) + " " + unit;
+    const area = si(getArea(polygonArea)) + " " + getAreaUnit();
     const c = polylabel([this.points], 1.0);
     this.el.select("text").attr("x", c[0]).attr("y", c[1]).text(area);
   }

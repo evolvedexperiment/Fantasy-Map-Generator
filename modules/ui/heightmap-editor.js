@@ -1,14 +1,35 @@
 "use strict";
 
-function editHeightmap() {
-  void (function selectEditMode() {
-    alertMessage.innerHTML = `Heightmap is a core element on which all other data (rivers, burgs, states etc) is based.
-      So the best edit approach is to <i>erase</i> the secondary data and let the system automatically regenerate it on edit completion.
-      <p><i>Erase</i> mode also allows you Convert an Image into a heightmap or use Template Editor.</p>
-      <p>You can <i>keep</i> the data, but you won't be able to change the coastline.</p>
-      <p>Try <i>risk</i> mode to change the coastline and keep the data. The data will be restored as much as possible, but it can cause unpredictable errors.</p>
-      <p>Please <span class="pseudoLink" onclick=dowloadMap(); editHeightmap();>save the map</span> before editing the heightmap!</p>
-      <p style="margin-bottom: 0">Check out ${link("https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Heightmap-customization", "wiki")} for guidance.</p>`;
+function editHeightmap(options) {
+  const {mode, tool} = options || {};
+  restartHistory();
+  viewbox.insert("g", "#terrs").attr("id", "heights");
+
+  if (!mode) showModeDialog();
+  else enterHeightmapEditMode(mode);
+
+  if (modules.editHeightmap) return;
+  modules.editHeightmap = true;
+
+  // add listeners
+  byId("paintBrushes").on("click", openBrushesPanel);
+  byId("applyTemplate").on("click", openTemplateEditor);
+  byId("convertImage").on("click", openImageConverter);
+  byId("heightmapPreview").on("click", toggleHeightmapPreview);
+  byId("heightmap3DView").on("click", changeViewMode);
+  byId("finalizeHeightmap").on("click", finalizeHeightmap);
+  byId("renderOcean").on("click", mockHeightmap);
+  byId("templateUndo").on("click", () => restoreHistory(edits.n - 1));
+  byId("templateRedo").on("click", () => restoreHistory(edits.n + 1));
+
+  function showModeDialog() {
+    alertMessage.innerHTML = /* html */ `Heightmap is a core element on which all other data (rivers, burgs, states etc) is based. So the best edit approach is to
+    <i>erase</i> the secondary data and let the system automatically regenerate it on edit completion.
+    <p><i>Erase</i> mode also allows you Convert an Image into a heightmap or use Template Editor.</p>
+    <p>You can <i>keep</i> the data, but you won't be able to change the coastline.</p>
+    <p>Try <i>risk</i> mode to change the coastline and keep the data. The data will be restored as much as possible, but it can cause unpredictable errors.</p>
+    <p>Please <span class="pseudoLink" onclick="dowloadMap();">save the map</span> before editing the heightmap!</p>
+    <p style="margin-bottom: 0">Check out ${link("https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Heightmap-customization", "wiki")} for guidance.</p>`;
 
     $("#alert").dialog({
       resizable: false,
@@ -23,54 +44,44 @@ function editHeightmap() {
         }
       }
     });
-  })();
+  }
 
-  restartHistory();
-  viewbox.insert("g", "#terrs").attr("id", "heights");
-
-  if (modules.editHeightmap) return;
-  modules.editHeightmap = true;
-
-  // add listeners
-  document.getElementById("paintBrushes").addEventListener("click", openBrushesPanel);
-  document.getElementById("applyTemplate").addEventListener("click", openTemplateEditor);
-  document.getElementById("convertImage").addEventListener("click", openImageConverter);
-  document.getElementById("heightmapPreview").addEventListener("click", toggleHeightmapPreview);
-  document.getElementById("heightmap3DView").addEventListener("click", changeViewMode);
-  document.getElementById("finalizeHeightmap").addEventListener("click", finalizeHeightmap);
-  document.getElementById("renderOcean").addEventListener("click", mockHeightmap);
-  document.getElementById("templateUndo").addEventListener("click", () => restoreHistory(edits.n - 1));
-  document.getElementById("templateRedo").addEventListener("click", () => restoreHistory(edits.n + 1));
-
-  function enterHeightmapEditMode(type) {
+  function enterHeightmapEditMode(mode) {
     editHeightmap.layers = Array.from(mapLayers.querySelectorAll("li:not(.buttonoff)")).map(node => node.id); // store layers preset
-    editHeightmap.layers.forEach(l => document.getElementById(l).click()); // turn off all layers
+    editHeightmap.layers.forEach(l => byId(l).click()); // turn off all layers
 
     customization = 1;
     closeDialogs();
     tip('Heightmap edit mode is active. Click on "Exit Customization" to finalize the heightmap', true);
-    customizationMenu.style.display = "block";
-    toolsContent.style.display = "none";
-    heightmapEditMode.innerHTML = type;
 
-    if (type === "erase") {
+    byId("options")
+      .querySelectorAll(".tabcontent")
+      .forEach(tabcontent => {
+        tabcontent.style.display = "none";
+      });
+    byId("options").querySelector(".tab > .active").classList.remove("active");
+    byId("customizationMenu").style.display = "block";
+    byId("toolsTab").classList.add("active");
+    heightmapEditMode.innerHTML = mode;
+
+    if (mode === "erase") {
       undraw();
       changeOnlyLand.checked = false;
-    } else if (type === "keep") {
+    } else if (mode === "keep") {
       viewbox.selectAll("#landmass, #lakes").style("display", "none");
       changeOnlyLand.checked = true;
-    } else if (type === "risk") {
+    } else if (mode === "risk") {
       defs.selectAll("#land, #water").selectAll("path").remove();
       viewbox.selectAll("#coastline path, #lakes path, #oceanLayers path").remove();
       changeOnlyLand.checked = false;
     }
 
     // show convert and template buttons for Erase mode only
-    applyTemplate.style.display = type === "erase" ? "inline-block" : "none";
-    convertImage.style.display = type === "erase" ? "inline-block" : "none";
+    applyTemplate.style.display = mode === "erase" ? "inline-block" : "none";
+    convertImage.style.display = mode === "erase" ? "inline-block" : "none";
 
     // hide erosion checkbox if mode is Keep
-    allowErosionBox.style.display = type === "keep" ? "none" : "inline-block";
+    allowErosionBox.style.display = mode === "keep" ? "none" : "inline-block";
 
     // show finalize button
     if (!sessionStorage.getItem("noExitButtonAnimation")) {
@@ -93,27 +104,30 @@ function editHeightmap() {
         .style("transform", "scale(1)");
     } else exitCustomization.style.display = "block";
 
-    openBrushesPanel();
     turnButtonOn("toggleHeight");
     layersPreset.value = "heightmap";
     layersPreset.disabled = true;
     mockHeightmap();
     viewbox.on("touchmove mousemove", moveCursor);
+
+    if (tool === "templateEditor") openTemplateEditor();
+    else if (tool === "imageConverter") openImageConverter();
+    else openBrushesPanel();
   }
 
   function moveCursor() {
-    const p = d3.mouse(this),
-      cell = findGridCell(p[0], p[1]);
-    heightmapInfoX.innerHTML = rn(p[0]);
-    heightmapInfoY.innerHTML = rn(p[1]);
+    const [x, y] = d3.mouse(this);
+    const cell = findGridCell(x, y, grid);
+    heightmapInfoX.innerHTML = rn(x);
+    heightmapInfoY.innerHTML = rn(y);
     heightmapInfoCell.innerHTML = cell;
     heightmapInfoHeight.innerHTML = `${grid.cells.h[cell]} (${getHeight(grid.cells.h[cell])})`;
     if (tooltip.dataset.main) showMainTip();
 
     // move radius circle if drag mode is active
-    const pressed = document.getElementById("brushesButtons").querySelector("button.pressed");
+    const pressed = byId("brushesButtons").querySelector("button.pressed");
     if (!pressed) return;
-    moveCircle(p[0], p[1], brushRadius.valueAsNumber, "#333");
+    moveCircle(x, y, brushRadius.valueAsNumber, "#333");
   }
 
   // get user-friendly (real-world) height value from map data
@@ -135,7 +149,7 @@ function editHeightmap() {
   function finalizeHeightmap() {
     if (viewbox.select("#heights").selectAll("*").size() < 200)
       return tip("Insufficient land area! There should be at least 200 land cells to finalize the heightmap", null, "error");
-    if (document.getElementById("imageConverter").offsetParent) return tip("Please exit the Image Conversion mode first", null, "error");
+    if (byId("imageConverter").offsetParent) return tip("Please exit the Image Conversion mode first", null, "error");
 
     delete window.edits; // remove global variable
     redo.disabled = templateRedo.disabled = true;
@@ -143,7 +157,7 @@ function editHeightmap() {
 
     customization = 0;
     customizationMenu.style.display = "none";
-    if (document.getElementById("options").querySelector(".tab > button.active").id === "toolsTab") toolsContent.style.display = "block";
+    if (byId("options").querySelector(".tab > button.active").id === "toolsTab") toolsContent.style.display = "block";
     layersPreset.disabled = false;
     exitCustomization.style.display = "none"; // hide finalize button
     restoreDefaultEvents();
@@ -151,8 +165,8 @@ function editHeightmap() {
     closeDialogs();
     resetZoom();
 
-    if (document.getElementById("preview")) document.getElementById("preview").remove();
-    if (document.getElementById("canvas3d")) enterStandardView();
+    if (byId("preview")) byId("preview").remove();
+    if (byId("canvas3d")) enterStandardView();
 
     const mode = heightmapEditMode.innerHTML;
     if (mode === "erase") regenerateErasedData();
@@ -161,7 +175,7 @@ function editHeightmap() {
 
     // restore initial layers
     //viewbox.select("#heights").remove();
-    document.getElementById("heights").remove();
+    byId("heights").remove();
     turnButtonOff("toggleHeight");
     document
       .getElementById("mapLayers")
@@ -485,8 +499,8 @@ function editHeightmap() {
 
   function updateStatistics() {
     const landCells = grid.cells.h.reduce((s, h) => (h >= 20 ? s + 1 : s));
-    landmassCounter.innerHTML = `${landCells} (${rn((landCells / grid.cells.i.length) * 100)}%)`;
-    landmassAverage.innerHTML = rn(d3.mean(grid.cells.h));
+    byId("landmassCounter").innerText = `${landCells} (${rn((landCells / grid.cells.i.length) * 100)}%)`;
+    byId("landmassAverage").innerText = rn(d3.mean(grid.cells.h));
   }
 
   function updateHistory(noStat) {
@@ -499,8 +513,8 @@ function editHeightmap() {
     redo.disabled = templateRedo.disabled = true;
     if (!noStat) {
       updateStatistics();
-      if (document.getElementById("preview")) drawHeightmapPreview(); // update heightmap preview if opened
-      if (document.getElementById("canvas3d")) ThreeD.redraw(); // update 3d heightmap preview if opened
+      if (byId("preview")) drawHeightmapPreview(); // update heightmap preview if opened
+      if (byId("canvas3d")) ThreeD.redraw(); // update 3d heightmap preview if opened
     }
   }
 
@@ -514,8 +528,8 @@ function editHeightmap() {
     mockHeightmap();
     updateStatistics();
 
-    if (document.getElementById("preview")) drawHeightmapPreview(); // update heightmap preview if opened
-    if (document.getElementById("canvas3d")) ThreeD.redraw(); // update 3d heightmap preview if opened
+    if (byId("preview")) drawHeightmapPreview(); // update heightmap preview if opened
+    if (byId("canvas3d")) ThreeD.redraw(); // update 3d heightmap preview if opened
   }
 
   // restart edits from 1st step
@@ -541,31 +555,31 @@ function editHeightmap() {
     modules.openBrushesPanel = true;
 
     // add listeners
-    document.getElementById("brushesButtons").addEventListener("click", e => toggleBrushMode(e));
-    document.getElementById("changeOnlyLand").addEventListener("click", e => changeOnlyLandClick(e));
-    document.getElementById("undo").addEventListener("click", () => restoreHistory(edits.n - 1));
-    document.getElementById("redo").addEventListener("click", () => restoreHistory(edits.n + 1));
-    document.getElementById("rescaleShow").addEventListener("click", () => {
-      document.getElementById("modifyButtons").style.display = "none";
-      document.getElementById("rescaleSection").style.display = "block";
+    byId("brushesButtons").on("click", e => toggleBrushMode(e));
+    byId("changeOnlyLand").on("click", e => changeOnlyLandClick(e));
+    byId("undo").on("click", () => restoreHistory(edits.n - 1));
+    byId("redo").on("click", () => restoreHistory(edits.n + 1));
+    byId("rescaleShow").on("click", () => {
+      byId("modifyButtons").style.display = "none";
+      byId("rescaleSection").style.display = "block";
     });
-    document.getElementById("rescaleHide").addEventListener("click", () => {
-      document.getElementById("modifyButtons").style.display = "block";
-      document.getElementById("rescaleSection").style.display = "none";
+    byId("rescaleHide").on("click", () => {
+      byId("modifyButtons").style.display = "block";
+      byId("rescaleSection").style.display = "none";
     });
-    document.getElementById("rescaler").addEventListener("change", e => rescale(e.target.valueAsNumber));
-    document.getElementById("rescaleCondShow").addEventListener("click", () => {
-      document.getElementById("modifyButtons").style.display = "none";
-      document.getElementById("rescaleCondSection").style.display = "block";
+    byId("rescaler").on("change", e => rescale(e.target.valueAsNumber));
+    byId("rescaleCondShow").on("click", () => {
+      byId("modifyButtons").style.display = "none";
+      byId("rescaleCondSection").style.display = "block";
     });
-    document.getElementById("rescaleCondHide").addEventListener("click", () => {
-      document.getElementById("modifyButtons").style.display = "block";
-      document.getElementById("rescaleCondSection").style.display = "none";
+    byId("rescaleCondHide").on("click", () => {
+      byId("modifyButtons").style.display = "block";
+      byId("rescaleCondSection").style.display = "none";
     });
-    document.getElementById("rescaleExecute").addEventListener("click", rescaleWithCondition);
-    document.getElementById("smoothHeights").addEventListener("click", smoothAllHeights);
-    document.getElementById("disruptHeights").addEventListener("click", disruptAllHeights);
-    document.getElementById("brushClear").addEventListener("click", startFromScratch);
+    byId("rescaleExecute").on("click", rescaleWithCondition);
+    byId("smoothHeights").on("click", smoothAllHeights);
+    byId("disruptHeights").on("click", disruptAllHeights);
+    byId("brushClear").on("click", startFromScratch);
 
     function exitBrushMode() {
       const pressed = document.querySelector("#brushesButtons > button.pressed");
@@ -574,7 +588,7 @@ function editHeightmap() {
 
       viewbox.style("cursor", "default").on(".drag", null);
       removeCircle();
-      document.getElementById("brushesSliders").style.display = "none";
+      byId("brushesSliders").style.display = "none";
     }
 
     const dragBrushThrottled = throttle(dragBrush, 100);
@@ -584,15 +598,15 @@ function editHeightmap() {
         return;
       }
       exitBrushMode();
-      document.getElementById("brushesSliders").style.display = "block";
+      byId("brushesSliders").style.display = "block";
       e.target.classList.add("pressed");
       viewbox.style("cursor", "crosshair").call(d3.drag().on("start", dragBrushThrottled));
     }
 
     function dragBrush() {
       const r = brushRadius.valueAsNumber;
-      const point = d3.mouse(this);
-      const start = findGridCell(point[0], point[1]);
+      const [x, y] = d3.mouse(this);
+      const start = findGridCell(x, y, grid);
 
       d3.event.on("drag", () => {
         const p = d3.mouse(this);
@@ -611,9 +625,7 @@ function editHeightmap() {
       const power = brushPower.valueAsNumber;
       const interpolate = d3.interpolateRound(power, 1);
       const land = changeOnlyLand.checked;
-      function lim(v) {
-        return minmax(v, land ? 20 : 0, 100);
-      }
+      const lim = v => minmax(v, land ? 20 : 0, 100);
       const h = grid.cells.h;
 
       const brush = document.querySelector("#brushesButtons > button.pressed").id;
@@ -642,21 +654,17 @@ function editHeightmap() {
       const land = changeOnlyLand.checked;
       grid.cells.h = grid.cells.h.map(h => (land && (h < 20 || h + v < 20) ? h : lim(h + v)));
       updateHeightmap();
-      document.getElementById("rescaler").value = 0;
+      byId("rescaler").value = 0;
     }
 
     function rescaleWithCondition() {
       const range = rescaleLower.value + "-" + rescaleHigher.value;
       const operator = conditionSign.value;
       const operand = rescaleModifier.valueAsNumber;
-      if (Number.isNaN(operand)) {
-        tip("Operand should be a number", false, "error");
-        return;
-      }
-      if ((operator === "add" || operator === "subtract") && !Number.isInteger(operand)) {
-        tip("Operand should be an integer", false, "error");
-        return;
-      }
+      if (Number.isNaN(operand)) return tip("Operand should be a number", false, "error");
+      if ((operator === "add" || operator === "subtract") && !Number.isInteger(operand)) return tip("Operand should be an integer", false, "error");
+
+      HeightmapGenerator.setGraph(grid);
 
       if (operator === "multiply") HeightmapGenerator.modify(range, 0, operand, 0);
       else if (operator === "divide") HeightmapGenerator.modify(range, 0, 1 / operand, 0);
@@ -664,11 +672,14 @@ function editHeightmap() {
       else if (operator === "subtract") HeightmapGenerator.modify(range, -1 * operand, 1, 0);
       else if (operator === "exponent") HeightmapGenerator.modify(range, 0, 1, operand);
 
+      grid.cells.h = HeightmapGenerator.getHeights();
       updateHeightmap();
     }
 
     function smoothAllHeights() {
+      HeightmapGenerator.setGraph(grid);
       HeightmapGenerator.smooth(4, 1.5);
+      grid.cells.h = HeightmapGenerator.getHeights();
       updateHeightmap();
     }
 
@@ -678,15 +689,10 @@ function editHeightmap() {
     }
 
     function startFromScratch() {
-      if (changeOnlyLand.checked) {
-        tip("Not allowed when 'Change only land cells' mode is set", false, "error");
-        return;
-      }
+      if (changeOnlyLand.checked) return tip("Not allowed when 'Change only land cells' mode is set", false, "error");
       const someHeights = grid.cells.h.some(h => h);
-      if (!someHeights) {
-        tip("Heightmap is already cleared, please do not click twice if not required", false, "error");
-        return;
-      }
+      if (!someHeights) return tip("Heightmap is already cleared, please do not click twice if not required", false, "error");
+
       grid.cells.h = new Uint8Array(grid.cells.i.length);
       viewbox.select("#heights").selectAll("*").remove();
       updateHistory();
@@ -695,7 +701,7 @@ function editHeightmap() {
 
   function openTemplateEditor() {
     if ($("#templateEditor").is(":visible")) return;
-    const body = document.getElementById("templateBody");
+    const $body = byId("templateBody");
 
     $("#templateEditor").dialog({
       title: "Template Editor",
@@ -711,13 +717,13 @@ function editHeightmap() {
     $("#templateBody").sortable({items: "> div", handle: ".icon-resize-vertical", containment: "#templateBody", axis: "y"});
 
     // add listeners
-    body.addEventListener("click", function (ev) {
+    $body.on("click", function (ev) {
       const el = ev.target;
       if (el.classList.contains("icon-check")) {
         el.classList.remove("icon-check");
         el.classList.add("icon-check-empty");
         el.parentElement.style.opacity = 0.5;
-        body.dataset.changed = 1;
+        $body.dataset.changed = 1;
         return;
       }
       if (el.classList.contains("icon-check-empty")) {
@@ -732,71 +738,146 @@ function editHeightmap() {
       }
     });
 
-    document.getElementById("templateTools").addEventListener("click", e => addStepOnClick(e));
-    document.getElementById("templateSelect").addEventListener("change", e => selectTemplate(e));
-    document.getElementById("templateRun").addEventListener("click", executeTemplate);
-    document.getElementById("templateSave").addEventListener("click", downloadTemplate);
-    document.getElementById("templateLoad").addEventListener("click", () => templateToLoad.click());
-    document.getElementById("templateToLoad").addEventListener("change", function () {
+    byId("templateEditor").on("keypress", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        executeTemplate();
+      }
+    });
+
+    byId("templateTools").on("click", addStepOnClick);
+    byId("templateSelect").on("change", selectTemplate);
+    byId("templateRun").on("click", executeTemplate);
+    byId("templateSave").on("click", downloadTemplate);
+    byId("templateLoad").on("click", () => templateToLoad.click());
+    byId("templateToLoad").on("change", function () {
       uploadFile(this, uploadTemplate);
     });
 
     function addStepOnClick(e) {
       if (e.target.tagName !== "BUTTON") return;
-      const type = e.target.id.replace("template", "");
-      document.getElementById("templateBody").dataset.changed = 1;
+      const type = e.target.dataset.type;
+      byId("templateBody").dataset.changed = 1;
       addStep(type);
     }
 
     function addStep(type, count, dist, arg4, arg5) {
-      const body = document.getElementById("templateBody");
-      body.insertAdjacentHTML("beforeend", getStepHTML(type, count, dist, arg4, arg5));
-      const elDist = body.querySelector("div:last-child").querySelector(".templateDist");
-      if (elDist) elDist.addEventListener("change", setRange);
-      if (dist && elDist && elDist.tagName === "SELECT") {
-        for (const o of elDist.options) {
-          if (o.value === dist) elDist.value = dist;
+      const $body = byId("templateBody");
+      $body.insertAdjacentHTML("beforeend", getStepHTML(type, count, dist, arg4, arg5));
+
+      const $elDist = $body.querySelector("div:last-child > span > .templateDist");
+      if ($elDist) $elDist.on("change", setRange);
+
+      if (dist && $elDist && $elDist.tagName === "SELECT") {
+        for (const option of $elDist.options) {
+          if (option.value === dist) $elDist.value = dist;
         }
-        if (elDist.value !== dist) {
+        if ($elDist.value !== dist) {
           const opt = document.createElement("option");
           opt.value = opt.innerHTML = dist;
-          elDist.add(opt);
-          elDist.value = dist;
+          $elDist.add(opt);
+          $elDist.value = dist;
         }
       }
     }
 
     function getStepHTML(type, count, arg3, arg4, arg5) {
-      const Trash = `<i class="icon-trash-empty pointer" data-tip="Click to remove the step"></i>`;
-      const Hide = `<div class="icon-check" data-tip="Click to skip the step"></div>`;
-      const Reorder = `<i class="icon-resize-vertical" data-tip="Drag to reorder"></i>`;
-      const common = `<div data-type="${type}">${Hide}<div style="width:4em">${type}</div>${Trash}${Reorder}`;
+      const Trash = /* html */ `<i class="icon-trash-empty pointer" data-tip="Click to remove the step"></i>`;
+      const Hide = /* html */ `<div class="icon-check" data-tip="Click to skip the step"></div>`;
+      const Reorder = /* html */ `<i class="icon-resize-vertical" data-tip="Drag to reorder"></i>`;
+      const common = /* html */ `<div data-type="${type}">${Hide}<div style="width:4em">${type}</div>${Trash}${Reorder}`;
 
-      const TempY = `<span>y:<input class="templateY" data-tip="Placement range percentage along Y axis (minY-maxY)" value=${arg5 || "20-80"}></span>`;
-      const TempX = `<span>x:<input class="templateX" data-tip="Placement range percentage along X axis (minX-maxX)" value=${arg4 || "15-85"}></span>`;
-      const Height = `<span>h:<input class="templateHeight" data-tip="Blob maximum height, use hyphen to get a random number in range" value=${
-        arg3 || "40-50"
-      }></span>`;
-      const Count = `<span>n:<input class="templateCount" data-tip="Blobs to add, use hyphen to get a random number in range" value=${count || "1-2"}></span>`;
-      const blob = `${common}${TempY}${TempX}${Height}${Count}</div>`;
+      const TempY = /* html */ `<span>y:
+          <input class="templateY" data-tip="Placement range percentage along Y axis (minY-maxY)" value=${arg5 || "20-80"} />
+        </span>`;
 
-      if (type === "Hill" || type === "Pit" || type === "Range" || type === "Trough") return blob;
+      const TempX = /* html */ `<span>x:
+          <input class="templateX" data-tip="Placement range percentage along X axis (minX-maxX)" value=${arg4 || "15-85"} />
+        </span>`;
+
+      const Height = /* html */ `<span>h:
+          <input class="templateHeight" data-tip="Blob maximum height, use hyphen to get a random number in range" value=${arg3 || "40-50"} />
+        </span>`;
+
+      const Count = /* html */ `<span>n:
+          <input class="templateCount" data-tip="Blobs to add, use hyphen to get a random number in range" value=${count || "1-2"} />
+        </span>`;
+
+      if (type === "Hill" || type === "Pit" || type === "Range" || type === "Trough") return /* html */ `${common}${TempY}${TempX}${Height}${Count}</div>`;
+
       if (type === "Strait")
-        return `${common}<span>d:<select class="templateDist" data-tip="Strait direction"><option value="vertical" selected>vertical</option><option value="horizontal">horizontal</option></select></span><span>w:<input class="templateCount" data-tip="Strait width, use hyphen to get a random number in range" value=${
-          count || "2-7"
-        }></span></div>`;
+        return /* html */ `${common}
+          <span>d:
+            <select class="templateDist" data-tip="Strait direction">
+              <option value="vertical" selected>vertical</option>
+              <option value="horizontal">horizontal</option>
+            </select>
+          </span>
+          <span>w:
+            <input class="templateCount" data-tip="Strait width, use hyphen to get a random number in range" value=${count || "2-7"} />
+          </span>
+        </div>`;
+
+      if (type === "Invert")
+        return /* html */ `${common}
+          <span>by:
+            <select class="templateDist" data-tip="Mirror heightmap along axis" style="width: 7.8em">
+              <option value="x" selected>x</option>
+              <option value="y">y</option>
+              <option value="xy">both</option>
+            </select>
+          </span>
+          <span>n:
+            <input class="templateCount" data-tip="Probability of inversion, range 0-1" value=${count || "0.5"} />
+          </span>
+        </div>`;
+
+      if (type === "Mask")
+        return /* html */ `${common}
+          <span>f:
+            <input class="templateCount"
+              data-tip="Set masking fraction. 1 - full insulation (prevent land on map edges), 2 - half-insulation, etc. Negative number to inverse the effect"
+              type="number" min=-10 max=10 value=${count || 1} />
+          </span>
+        </div>`;
+
       if (type === "Add")
-        return `${common}<span>to:<select class="templateDist" data-tip="Change only land or all cells"><option value="all" selected>all cells</option><option value="land">land only</option><option value="interval">interval</option></select></span><span>v:<input class="templateCount" data-tip="Add value to height of all cells (negative values are allowed)" type="number" value=${
-          count || -10
-        } min=-100 max=100 step=1></span></div>`;
+        return /* html */ `${common}
+          <span>to:
+            <select class="templateDist" data-tip="Change only land or all cells">
+              <option value="all" selected>all cells</option>
+              <option value="land">land only</option>
+              <option value="interval">interval</option>
+            </select>
+          </span>
+          <span>v:
+            <input class="templateCount" data-tip="Add value to height of all cells (negative values are allowed)"
+            type="number" value=${count || -10} min=-100 max=100 step=1 />
+          </span>
+        </div>`;
+
       if (type === "Multiply")
-        return `${common}<span>to:<select class="templateDist" data-tip="Change only land or all cells"><option value="all" selected>all cells</option><option value="land">land only</option><option value="interval">interval</option></select></span><span>v:<input class="templateCount" data-tip="Multiply all cells Height by the value" type="number" value=${
-          count || 1.1
-        } min=0 max=10 step=.1></span></div>`;
+        return /* html */ `${common}
+          <span>to:
+            <select class="templateDist" data-tip="Change only land or all cells">
+              <option value="all" selected>all cells</option>
+              <option value="land">land only</option>
+              <option value="interval">interval</option>
+            </select>
+          </span>
+          <span>v:
+            <input class="templateCount" data-tip="Multiply all cells Height by the value" type="number" 
+              value=${count || 1.1} min=0 max=10 step=.1 />
+          </span>
+        </div>`;
+
       if (type === "Smooth")
-        return `${common}<span>f:<input class="templateCount" data-tip="Set smooth fraction. 1 - full smooth, 2 - half-smooth, etc." type="number" min=1 max=10 value=${
-          count || 2
-        }></span></div>`;
+        return /* html */ `${common}
+          <span>f:
+            <input class="templateCount" data-tip="Set smooth fraction. 1 - full smooth, 2 - half-smooth, etc." 
+              type="number" min=1 max=10 step=1 value=${count || 2} />
+          </span>
+        </div>`;
     }
 
     function setRange(event) {
@@ -811,14 +892,11 @@ function editHeightmap() {
     }
 
     function selectTemplate(e) {
-      const body = document.getElementById("templateBody");
+      const body = byId("templateBody");
       const steps = body.querySelectorAll("div").length;
       const changed = +body.getAttribute("data-changed");
       const template = e.target.value;
-      if (!steps || !changed) {
-        changeTemplate(template);
-        return;
-      }
+      if (!steps || !changed) return changeTemplate(template);
 
       alertMessage.innerHTML = "Are you sure you want to select a different template? All changes will be lost.";
       $("#alert").dialog({
@@ -837,11 +915,11 @@ function editHeightmap() {
     }
 
     function changeTemplate(template) {
-      const body = document.getElementById("templateBody");
+      const body = byId("templateBody");
       body.setAttribute("data-changed", 0);
       body.innerHTML = "";
 
-      const templateString = HeightmapTemplates[template];
+      const templateString = heightmapTemplates[template]?.template;
       if (!templateString) return;
 
       const steps = templateString.split("\n");
@@ -854,43 +932,50 @@ function editHeightmap() {
     }
 
     function executeTemplate() {
-      const body = document.getElementById("templateBody");
-      const steps = body.querySelectorAll("#templateBody > div");
+      const steps = byId("templateBody").querySelectorAll("#templateBody > div");
       if (!steps.length) return;
 
-      const {addHill, addPit, addRange, addTrough, addStrait, modify, smooth} = HeightmapGenerator;
-      grid.cells.h = new Uint8Array(grid.cells.i.length); // clean all heights
+      const seed = byId("templateSeed").value;
+      if (seed) Math.random = aleaPRNG(seed);
+
+      grid.cells.h = createTypedArray({maxValue: 100, length: grid.points.length});
+      HeightmapGenerator.setGraph(grid);
+      restartHistory();
 
       for (const step of steps) {
         if (step.style.opacity === "0.5") continue;
-        const type = step.dataset.type;
 
         const count = step.querySelector(".templateCount")?.value || "";
         const height = step.querySelector(".templateHeight")?.value || "";
         const dist = step.querySelector(".templateDist")?.value || null;
         const x = step.querySelector(".templateX")?.value || null;
         const y = step.querySelector(".templateY")?.value || null;
+        const type = step.dataset.type;
 
-        if (type === "Hill") addHill(count, height, x, y);
-        else if (type === "Pit") addPit(count, height, x, y);
-        else if (type === "Range") addRange(count, height, x, y);
-        else if (type === "Trough") addTrough(count, height, x, y);
-        else if (type === "Strait") addStrait(count, dist);
-        else if (type === "Add") modify(dist, +count, 1);
-        else if (type === "Multiply") modify(dist, 0, +count);
-        else if (type === "Smooth") smooth(+count);
+        if (type === "Hill") HeightmapGenerator.addHill(count, height, x, y);
+        else if (type === "Pit") HeightmapGenerator.addPit(count, height, x, y);
+        else if (type === "Range") HeightmapGenerator.addRange(count, height, x, y);
+        else if (type === "Trough") HeightmapGenerator.addTrough(count, height, x, y);
+        else if (type === "Strait") HeightmapGenerator.addStrait(count, dist);
+        else if (type === "Mask") HeightmapGenerator.mask(+count);
+        else if (type === "Invert") HeightmapGenerator.invert(+count, dist);
+        else if (type === "Add") HeightmapGenerator.modify(dist, +count, 1);
+        else if (type === "Multiply") HeightmapGenerator.modify(dist, 0, +count);
+        else if (type === "Smooth") HeightmapGenerator.smooth(+count);
 
-        updateHistory("noStat"); // update history every step
+        grid.cells.h = HeightmapGenerator.getHeights();
+        updateHistory("noStat"); // update history on every step
       }
 
+      grid.cells.h = HeightmapGenerator.getHeights();
       updateStatistics();
       mockHeightmap();
-      if (document.getElementById("preview")) drawHeightmapPreview(); // update heightmap preview if opened
-      if (document.getElementById("canvas3d")) ThreeD.redraw(); // update 3d heightmap preview if opened
+      if (byId("preview")) drawHeightmapPreview(); // update heightmap preview if opened
+      if (byId("canvas3d")) ThreeD.redraw(); // update 3d heightmap preview if opened
     }
 
     function downloadTemplate() {
-      const body = document.getElementById("templateBody");
+      const body = byId("templateBody");
       body.dataset.changed = 0;
       const steps = body.querySelectorAll("#templateBody > div");
       if (!steps.length) return;
@@ -975,18 +1060,18 @@ function editHeightmap() {
     })();
 
     // add listeners
-    document.getElementById("convertImageLoad").addEventListener("click", () => imageToLoad.click());
-    document.getElementById("imageToLoad").addEventListener("change", loadImage);
-    document.getElementById("convertAutoLum").addEventListener("click", () => autoAssing("lum"));
-    document.getElementById("convertAutoHue").addEventListener("click", () => autoAssing("hue"));
-    document.getElementById("convertAutoFMG").addEventListener("click", () => autoAssing("scheme"));
-    document.getElementById("convertColorsButton").addEventListener("click", setConvertColorsNumber);
-    document.getElementById("convertComplete").addEventListener("click", applyConversion);
-    document.getElementById("convertCancel").addEventListener("click", cancelConversion);
-    document.getElementById("convertOverlay").addEventListener("input", function () {
+    byId("convertImageLoad").on("click", () => imageToLoad.click());
+    byId("imageToLoad").on("change", loadImage);
+    byId("convertAutoLum").on("click", () => autoAssing("lum"));
+    byId("convertAutoHue").on("click", () => autoAssing("hue"));
+    byId("convertAutoFMG").on("click", () => autoAssing("scheme"));
+    byId("convertColorsButton").on("click", setConvertColorsNumber);
+    byId("convertComplete").on("click", applyConversion);
+    byId("convertCancel").on("click", cancelConversion);
+    byId("convertOverlay").on("input", function () {
       setOverlayOpacity(this.value);
     });
-    document.getElementById("convertOverlayNumber").addEventListener("input", function () {
+    byId("convertOverlayNumber").on("input", function () {
       setOverlayOpacity(this.value);
     });
 
@@ -1010,7 +1095,7 @@ function editHeightmap() {
       document.body.appendChild(img);
 
       img.onload = function () {
-        const ctx = document.getElementById("canvas").getContext("2d");
+        const ctx = byId("canvas").getContext("2d");
         ctx.drawImage(img, 0, 0, graphWidth, graphHeight);
         heightsFromImage(+convertColors.value);
         resetZoom();
@@ -1021,7 +1106,7 @@ function editHeightmap() {
     }
 
     function heightsFromImage(count) {
-      const sourceImage = document.getElementById("canvas");
+      const sourceImage = byId("canvas");
       const sampleCanvas = document.createElement("canvas");
       sampleCanvas.width = grid.cellsX;
       sampleCanvas.height = grid.cellsY;
@@ -1060,7 +1145,7 @@ function editHeightmap() {
         .attr("class", "color-div")
         .on("click", colorClicked);
 
-      document.getElementById("colorsUnassignedNumber").innerHTML = colors.length;
+      byId("colorsUnassignedNumber").innerHTML = colors.length;
     }
 
     function mapClicked() {
@@ -1117,8 +1202,8 @@ function editHeightmap() {
         colorsAssigned.appendChild(selectedColor);
         colorsAssigned.style.display = "block";
 
-        document.getElementById("colorsUnassignedNumber").innerHTML = colorsUnassigned.childElementCount - 2;
-        document.getElementById("colorsAssignedNumber").innerHTML = colorsAssigned.childElementCount - 2;
+        byId("colorsUnassignedNumber").innerHTML = colorsUnassigned.childElementCount - 2;
+        byId("colorsAssignedNumber").innerHTML = colorsAssigned.childElementCount - 2;
       }
     }
 
@@ -1185,7 +1270,7 @@ function editHeightmap() {
 
       colorsAssigned.style.display = "block";
       colorsUnassigned.style.display = "none";
-      document.getElementById("colorsAssignedNumber").innerHTML = colorsAssigned.childElementCount - 2;
+      byId("colorsAssignedNumber").innerHTML = colorsAssigned.childElementCount - 2;
     }
 
     function setConvertColorsNumber() {
@@ -1201,7 +1286,7 @@ function editHeightmap() {
 
     function setOverlayOpacity(v) {
       convertOverlay.value = convertOverlayNumber.value = v;
-      document.getElementById("canvas").style.opacity = v;
+      byId("canvas").style.opacity = v;
     }
 
     function applyConversion() {
@@ -1228,10 +1313,10 @@ function editHeightmap() {
     }
 
     function restoreImageConverterState() {
-      const canvas = document.getElementById("canvas");
+      const canvas = byId("canvas");
       if (canvas) canvas.remove();
 
-      const image = document.getElementById("imageToConvert");
+      const image = byId("imageToConvert");
       if (image) image.remove();
 
       d3.select("#imageConverter").selectAll("div.color-div").remove();
@@ -1247,11 +1332,8 @@ function editHeightmap() {
     function closeImageConverter(event) {
       event.preventDefault();
       event.stopPropagation();
-      alertMessage.innerHTML = `
-        Are you sure you want to close the Image Converter? 
-        Click "Cancel" to geck back to convertion. 
-        Click "Complete" to apply the conversion. 
-        Click "Close" to exit conversion mode and restore previous heightmap`;
+      alertMessage.innerHTML = /* html */ ` Are you sure you want to close the Image Converter? Click "Cancel" to geck back to convertion. Click "Complete" to apply
+      the conversion. Click "Close" to exit conversion mode and restore previous heightmap`;
 
       $("#alert").dialog({
         resizable: false,
@@ -1276,8 +1358,8 @@ function editHeightmap() {
   }
 
   function toggleHeightmapPreview() {
-    if (document.getElementById("preview")) {
-      document.getElementById("preview").remove();
+    if (byId("preview")) {
+      byId("preview").remove();
       return;
     }
     const preview = document.createElement("canvas");
@@ -1285,29 +1367,31 @@ function editHeightmap() {
     preview.width = grid.cellsX;
     preview.height = grid.cellsY;
     document.body.insertBefore(preview, optionsContainer);
-    preview.addEventListener("mouseover", () => tip("Heightmap preview. Click to download a screen-sized image"));
-    preview.addEventListener("click", downloadPreview);
+    preview.on("mouseover", () => tip("Heightmap preview. Click to download a screen-sized image"));
+    preview.on("click", downloadPreview);
     drawHeightmapPreview();
   }
 
   function drawHeightmapPreview() {
-    const ctx = document.getElementById("preview").getContext("2d");
+    const ctx = byId("preview").getContext("2d");
     const imageData = ctx.createImageData(grid.cellsX, grid.cellsY);
 
     grid.cells.h.forEach((height, i) => {
-      let h = height < 20 ? Math.max(height / 1.5, 0) : height;
+      const h = height < 20 ? Math.max(height / 1.5, 0) : height;
       const v = (h / 100) * 255;
-      imageData.data[i * 4] = v;
-      imageData.data[i * 4 + 1] = v;
-      imageData.data[i * 4 + 2] = v;
-      imageData.data[i * 4 + 3] = 255;
+
+      const n = i * 4;
+      imageData.data[n] = v;
+      imageData.data[n + 1] = v;
+      imageData.data[n + 2] = v;
+      imageData.data[n + 3] = 255;
     });
 
     ctx.putImageData(imageData, 0, 0);
   }
 
   function downloadPreview() {
-    const preview = document.getElementById("preview");
+    const preview = byId("preview");
     const dataURL = preview.toDataURL("image/png");
 
     const img = new Image();

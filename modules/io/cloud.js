@@ -52,7 +52,7 @@ window.Cloud = (function () {
     },
 
     async connect(token) {
-      await import("https://unpkg.com/dropbox@10.8.0/dist/Dropbox-sdk.min.js");
+      await import("../../libs/dropbox-sdk.min.js");
       const auth = new Dropbox.DropboxAuth({clientId: this.clientId});
       auth.setAccessToken(token);
       this.api = new Dropbox.Dropbox({auth});
@@ -73,7 +73,13 @@ window.Cloud = (function () {
 
     async list() {
       const resp = await this.call("filesListFolder", {path: ""});
-      return resp.result.entries.map(e => ({name: e.name, path: e.path_lower}));
+      const filesData = resp.result.entries.map(({name, client_modified, size, path_lower}) => ({
+        name: name,
+        updated: client_modified,
+        size,
+        path: path_lower
+      }));
+      return filesData.filter(({size}) => size).reverse();
     },
 
     auth() {
@@ -117,7 +123,13 @@ window.Cloud = (function () {
       if (sharedLinks.result.links.length) return resp.result.links[0].url;
 
       // create new shared link
-      const settings = {require_password: false, audience: "public", access: "viewer", requested_visibility: "public", allow_download: true};
+      const settings = {
+        require_password: false,
+        audience: "public",
+        access: "viewer",
+        requested_visibility: "public",
+        allow_download: true
+      };
       const resp = await this.call("sharingCreateSharedLinkWithSettings", {path, settings});
       DEBUG && console.log("Dropbox link object:", resp.result);
       return resp.result.url;

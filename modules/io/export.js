@@ -75,7 +75,8 @@ async function saveTiles() {
   return new Promise(async (resolve, reject) => {
     // download schema
     const urlSchema = await getMapURL("tiles", {debug: true, fullMap: true});
-    const zip = new JSZip();
+    await import("../../libs/jszip.min.js");
+    const zip = new window.JSZip();
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -139,7 +140,7 @@ async function saveTiles() {
 
 // parse map svg to object url
 async function getMapURL(type, options = {}) {
-  const {debug = false, globe = false, noLabels = false, noWater = false, fullMap = false} = options;
+  const {debug = false, globe = false, noLabels = false, noWater = false, noScaleBar = false, noIce = false, fullMap = false} = options;
 
   if (fullMap) drawScaleBar(1);
 
@@ -164,6 +165,8 @@ async function getMapURL(type, options = {}) {
     clone.select("#oceanBase").attr("opacity", 0);
     clone.select("#oceanPattern").attr("opacity", 0);
   }
+  if (noScaleBar) clone.select("#scaleBar")?.remove();
+  if (noIce) clone.select("#ice")?.remove();
   if (fullMap) {
     // reset transform to show the whole map
     clone.attr("width", graphWidth).attr("height", graphHeight);
@@ -337,7 +340,7 @@ function removeUnusedElements(clone) {
 
 function updateMeshCells(clone) {
   const data = renderOcean.checked ? grid.cells.i : grid.cells.i.filter(i => grid.cells.h[i] >= 20);
-  const scheme = getColorScheme();
+  const scheme = getColorScheme(terrs.attr("scheme"));
   clone.select("#heights").attr("filter", "url(#blur1)");
   clone
     .select("#heights")

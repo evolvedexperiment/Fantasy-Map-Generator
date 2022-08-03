@@ -6,14 +6,14 @@ $("#exitCustomization").draggable({handle: "div"});
 $("#mapLayers").disableSelection();
 
 // remove glow if tip is aknowledged
-if (localStorage.getItem("disable_click_arrow_tooltip")) {
+if (stored("disable_click_arrow_tooltip")) {
   clearMainTip();
   optionsTrigger.classList.remove("glow");
 }
 
 // Show options pane on trigger click
 function showOptions(event) {
-  if (!localStorage.getItem("disable_click_arrow_tooltip")) {
+  if (!stored("disable_click_arrow_tooltip")) {
     clearMainTip();
     localStorage.setItem("disable_click_arrow_tooltip", true);
     optionsTrigger.classList.remove("glow");
@@ -69,61 +69,31 @@ document
     if (id === "layersTab") layersContent.style.display = "block";
     else if (id === "styleTab") styleContent.style.display = "block";
     else if (id === "optionsTab") optionsContent.style.display = "block";
-    else if (id === "toolsTab") customization === 1 ? (customizationMenu.style.display = "block") : (toolsContent.style.display = "block");
+    else if (id === "toolsTab")
+      customization === 1 ? (customizationMenu.style.display = "block") : (toolsContent.style.display = "block");
     else if (id === "aboutTab") aboutContent.style.display = "block";
   });
 
-// show popup with a list of Patreon supportes (updated manually, to be replaced with API call)
-function showSupporters() {
-  const supporters = `Aaron Meyer,Ahmad Amerih,AstralJacks,aymeric,Billy Dean Goehring,Branndon Edwards,Chase Mayers,Curt Flood,cyninge,Dino Princip,
-    E.M. White,es,Fondue,Fritjof Olsson,Gatsu,Johan Fröberg,Jonathan Moore,Joseph Miranda,Kate,KC138,Luke Nelson,Markus Finster,Massimo Vella,Mikey,
-    Nathan Mitchell,Paavi1,Pat,Ryan Westcott,Sasquatch,Shawn Spencer,Sizz_TV,Timothée CALLET,UTG community,Vlad Tomash,Wil Sisney,William Merriott,
-    Xariun,Gun Metal Games,Scott Marner,Spencer Sherman,Valerii Matskevych,Alloyed Clavicle,Stewart Walsh,Ruthlyn Mollett (Javan),Benjamin Mair-Pratt,
-    Diagonath,Alexander Thomas,Ashley Wilson-Savoury,William Henry,Preston Brooks,JOSHUA QUALTIERI,Hilton Williams,Katharina Haase,Hisham Bedri,Ian arless,
-    Karnat,Bird,Kevin,Jessica Thomas,Steve Hyatt,Logicspren,Alfred García,Jonathan Killstring,John Ackley,Invad3r233,Norbert Žigmund,Jennifer,
-    PoliticsBuff,_gfx_,Maggie,Connor McMartin,Jared McDaris,BlastWind,Franc Casanova Ferrer,Dead & Devil,Michael Carmody,Valerie Elise,naikibens220,
-    Jordon Phillips,William Pucs,The Dungeon Masters,Brady R Rathbun,J,Shadow,Matthew Tiffany,Huw Williams,Joseph Hamilton,FlippantFeline,Tamashi Toh,
-    kms,Stephen Herron,MidnightMoon,Whakomatic x,Barished,Aaron bateson,Brice Moss,Diklyquill,PatronUser,Michael Greiner,Steven Bennett,Jacob Harrington,
-    Miguel C.,Reya C.,Giant Monster Games,Noirbard,Brian Drennen,Ben Craigie,Alex Smolin,Endwords,Joshua E Goodwin,SirTobit ,Allen S. Rout,Allen Bull Bear,
-    Pippa Mitchell,R K,G0atfather,Ryan Lege,Caner Oleas Pekgönenç,Bradley Edwards,Tertiary ,Austin Miller,Jesse Holmes,Jan Dvořák,Marten F,Erin D. Smale,
-    Maxwell Hill,Drunken_Legends,rob bee,Jesse Holmes,YYako,Detocroix,Anoplexian,Hannah,Paul,Sandra Krohn,Lucid,Richard Keating,Allen Varney,Rick Falkvinge,
-    Seth Fusion,Adam Butler,Gus,StroboWolf,Sadie Blackthorne,Zewen Senpai,Dell McKnight,Oneiris,Darinius Dragonclaw Studios,Christopher Whitney,Rhodes HvZ,
-    Jeppe Skov Jensen,María Martín López,Martin Seeger,Annie Rishor,Aram Sabatés,MadNomadMedia,Eric Foley,Vito Martono,James H. Anthony,Kevin Cossutta,
-    Thirty-OneR,ThatGuyGW,Dee Chiu,MontyBoosh,Achillain,Jaden,SashaTK,Steve Johnson,Pierrick Bertrand,Jared Kennedy,Dylan Devenny,Kyle Robertson,
-    Andrew Rostaing,Daniel Gill,Char,Jack,Barna Csíkos,Ian Rousseau,Nicholas Grabstas,Tom Van Orden jr,Bryan Brake,Akylos,Riley Seaman,MaxOliver,Evan-DiLeo,
-    Alex Debus,Joshua Vaught,Kyle S,Eric Moore,Dean Dunakin,Uniquenameosaurus,WarWizardGames,Chance Mena,Jan Ka,Miguel Alejandro,Dalton Clark,Simon Drapeau,
-    Radovan Zapletal,Jmmat6,Justa Badge,Blargh Blarghmoomoo,Vanessa Anjos,Grant A. Murray,Akirsop,Rikard Wolff,Jake Fish,teco 47,Antiroo,Jakob Siegel,
-    Guilherme Aguiar,Jarno Hallikainen,Justin Mcclain,Kristin Chernoff,Rowland Kingman,Esther Busch,Grayson McClead,Austin,Hakon the Viking,Chad Riley,
-    Cooper Counts,Patrick Jones,Clonetone,PlayByMail.Net,Brad Wardell,Lance Saba,Egoensis,Brea Richards,Tiber,Chris Bloom,Maxim Lowe,Aquelion,
-    Page One Project,Spencer Morris,Paul Ingram,Dust Bunny,Adrian Wright,Eric Alexander Cartaya,GameNight,Thomas Mortensen Hansen,Zklaus,Drinarius,
-    Ed Wright,Lon Varnadore,Crys Cain,Heaven N Lee,Jeffrey Henning,Lazer Elf,Jordan Bellah,Alex Beard,Kass Frisson,Petro Lombaard,Emanuel Pietri,Rox,
-    PinkEvil,Gavin Madrigal,Martin Lorber,Prince of Morgoth,Jaryd Armstrong,Andrew Pirkola,ThyHolyDevil,Gary Smith,Tyshaun Wise,Ethan Cook,Jon Stroman,
-    Nobody679,良义 金,Chris Gray,Phoenix Boatwright,Mackenzie,Milo Cohen,Jason Matthew Wuerfel,Rasmus Legêne,Andrew Hines,Wexxler,Espen Sæverud,Binks,
-    Dominick Ormsby,Linn Browning,Václav Švec,Alan Buehne,George J.Lekkas,Alexandre Boivin,Tommy Mayfield,Skylar Mangum-Turner,Karen Blythe,Stefan Gugerel,
-    Mike Conley,Xavier privé,Hope You're Well,Mark Sprietsma,Robert Landry,Nick Mowry,steve hall,Markell,Josh Wren,Neutrix,BLRageQuit,Rocky,
-    Dario Spadavecchia,Bas Kroot,John Patrick Callahan Jr,Alexandra Vesey,D,Exp1nt,james,Braxton Istace,w,Rurikid,AntiBlock,Redsauz,BigE0021,
-    Jonathan Williams,ojacid .,Brian Wilson,A Patreon of the Ahts,Shubham Jakhotiya,www15o,Jan Bundesmann,Angelique Badger,Joshua Xiong,Moist mongol,
-    Frank Fewkes,jason baldrick,Game Master Pro,Andrew Kircher,Preston Mitchell,Chris Kohut,Emarandzeb,Trentin Bergeron,Damon Gallaty,Pleaseworkforonce,
-    Jordan,William Markus,Sidr Dim,Alexander Whittaker,The Next Level,Patrick Valverde,Markus Peham,Daniel Cooper,the Beagles of Neorbus,Marley Moule,
-    Maximilian Schielke,Johnathan Xavier Hutchinson,Ele,Rita,Randy Ross,John Wick,RedSpaz,cameron cannon,Ian Grau-Fay,Kyle Barrett,Charlotte Wiland,
-    David Kaul,E. Jason Davis,Cyberate,Atenfox,Sea Wolf,Holly Loveless`;
-
-  const array = supporters
-    .replace(/(?:\r\n|\r|\n)/g, "")
-    .split(",")
-    .map(v => capitalize(v.trim()))
-    .sort();
-  alertMessage.innerHTML = "<ul style='column-count: 5; column-gap: 2em'>" + array.map(n => `<li>${n}</li>`).join("") + "</ul>";
-  $("#alert").dialog({resizable: false, title: "Patreon Supporters", width: "54vw", position: {my: "center", at: "center", of: "svg"}});
+// show popup with a list of Patreon supportes (updated manually)
+async function showSupporters() {
+  const {supporters} = await import("../dynamic/supporters.js?v=19062022");
+  alertMessage.innerHTML =
+    "<ul style='column-count: 5; column-gap: 2em'>" + supporters.map(n => `<li>${n}</li>`).join("") + "</ul>";
+  $("#alert").dialog({
+    resizable: false,
+    title: "Patreon Supporters",
+    width: "54vw",
+    position: {my: "center", at: "center", of: "svg"}
+  });
 }
 
 // on any option or dialog change
-document.getElementById("options").addEventListener("change", checkIfStored);
-document.getElementById("dialogs").addEventListener("change", checkIfStored);
+document.getElementById("options").addEventListener("change", storeValueIfRequired);
+document.getElementById("dialogs").addEventListener("change", storeValueIfRequired);
 document.getElementById("options").addEventListener("input", updateOutputToFollowInput);
 document.getElementById("dialogs").addEventListener("input", updateOutputToFollowInput);
 
-function checkIfStored(ev) {
+function storeValueIfRequired(ev) {
   if (ev.target.dataset.stored) lock(ev.target.dataset.stored);
 }
 
@@ -167,7 +137,7 @@ optionsContent.addEventListener("change", function (event) {
   if (id === "zoomExtentMin" || id === "zoomExtentMax") changeZoomExtent(value);
   else if (id === "optionsSeed") generateMapWithSeed("seed change");
   else if (id === "uiSizeInput" || id === "uiSizeOutput") changeUIsize(value);
-  if (id === "shapeRendering") viewbox.attr("shape-rendering", value);
+  else if (id === "shapeRendering") setRendering(value);
   else if (id === "yearInput") changeYear();
   else if (id === "eraInput") changeEra();
   else if (id === "stateLabelsModeInput") options.stateLabelsMode = value;
@@ -179,6 +149,7 @@ optionsContent.addEventListener("click", function (event) {
   else if (id === "optionsMapHistory") showSeedHistoryDialog();
   else if (id === "optionsCopySeed") copyMapURL();
   else if (id === "optionsEraRegenerate") regenerateEra();
+  else if (id === "templateInputContainer") openTemplateSelectionDialog();
   else if (id === "zoomExtentDefault") restoreDefaultZoomExtent();
   else if (id === "translateExtent") toggleTranslateExtent(event.target);
   else if (id === "speakerTest") testSpeaker();
@@ -269,7 +240,7 @@ const voiceInterval = setInterval(function () {
   voices.forEach((voice, i) => {
     select.options.add(new Option(voice.name, i, false));
   });
-  if (stored("speakerVoice")) select.value = localStorage.getItem("speakerVoice");
+  if (stored("speakerVoice")) select.value = stored("speakerVoice");
   // se voice to store
   else select.value = voices.findIndex(voice => voice.lang === "en-US"); // or to first found English-US
 }, 1000);
@@ -285,9 +256,9 @@ function testSpeaker() {
   speechSynthesis.speak(speaker);
 }
 
-function generateMapWithSeed(source) {
+function generateMapWithSeed() {
   if (optionsSeed.value == seed) return tip("The current map already has this seed", false, "error");
-  regeneratePrompt(source);
+  regeneratePrompt();
 }
 
 function showSeedHistoryDialog() {
@@ -296,7 +267,9 @@ function showSeedHistoryDialog() {
     const button = `<i data-tip="Click to generate a map with this seed" onclick="restoreSeed(${i})" class="icon-history optionsSeedRestore"></i>`;
     return `<li>Seed: ${h.seed} ${button}. Size: ${h.width}x${h.height}. Template: ${h.template}. Created: ${created}</li>`;
   });
-  alertMessage.innerHTML = `<ol style="margin: 0; padding-left: 1.5em">${lines.join("")}</ol>`;
+  alertMessage.innerHTML = /* html */ `<ol style="margin: 0; padding-left: 1.5em">
+    ${lines.join("")}
+  </ol>`;
 
   $("#alert").dialog({
     resizable: false,
@@ -307,14 +280,15 @@ function showSeedHistoryDialog() {
 
 // generate map with historical seed
 function restoreSeed(id) {
-  if (mapHistory[id].seed == seed) return tip("The current map is already generated with this seed", null, "error");
+  const {seed, width, height, template} = mapHistory[id];
+  byId("optionsSeed").value = seed;
+  byId("mapWidthInput").value = width;
+  byId("mapHeightInput").value = height;
+  byId("templateInput").value = template;
 
-  optionsSeed.value = mapHistory[id].seed;
-  mapWidthInput.value = mapHistory[id].width;
-  mapHeightInput.value = mapHistory[id].height;
-  templateInput.value = mapHistory[id].template;
   if (locked("template")) unlock("template");
-  regeneratePrompt("seed history");
+
+  regeneratePrompt();
 }
 
 function restoreDefaultZoomExtent() {
@@ -325,7 +299,9 @@ function restoreDefaultZoomExtent() {
 
 function copyMapURL() {
   const locked = document.querySelectorAll("i.icon-lock").length; // check if some options are locked
-  const search = `?seed=${optionsSeed.value}&width=${graphWidth}&height=${graphHeight}${locked ? "" : "&options=default"}`;
+  const search = `?seed=${optionsSeed.value}&width=${graphWidth}&height=${graphHeight}${
+    locked ? "" : "&options=default"
+  }`;
   navigator.clipboard
     .writeText(location.host + location.pathname + search)
     .then(() => {
@@ -335,27 +311,35 @@ function copyMapURL() {
     .catch(err => tip("Could not copy URL: " + err, false, "error", 5000));
 }
 
-function changeCellsDensity(value) {
-  const convert = v => {
-    if (v == 1) return 1000;
-    if (v == 2) return 2000;
-    if (v == 3) return 5000;
-    if (v == 4) return 10000;
-    if (v == 5) return 20000;
-    if (v == 6) return 30000;
-    if (v == 7) return 40000;
-    if (v == 8) return 50000;
-    if (v == 9) return 60000;
-    if (v == 10) return 70000;
-    if (v == 11) return 80000;
-    if (v == 12) return 90000;
-    if (v == 13) return 100000;
-  };
-  const cells = convert(value);
+const cellsDensityMap = {
+  1: 1000,
+  2: 2000,
+  3: 5000,
+  4: 10000,
+  5: 20000,
+  6: 30000,
+  7: 40000,
+  8: 50000,
+  9: 60000,
+  10: 70000,
+  11: 80000,
+  12: 90000,
+  13: 100000
+};
 
-  pointsInput.setAttribute("data-cells", cells);
-  pointsOutput_formatted.value = cells / 1000 + "K";
-  pointsOutput_formatted.style.color = cells > 50000 ? "#b12117" : cells !== 10000 ? "#dfdf12" : "#053305";
+function changeCellsDensity(value) {
+  const cells = cellsDensityMap[value] || 1000;
+  pointsInput.dataset.cells = cells;
+  pointsOutputFormatted.value = getCellsDensityValue(cells);
+  pointsOutputFormatted.style.color = getCellsDensityColor(cells);
+}
+
+function getCellsDensityValue(cells) {
+  return cells / 1000 + "K";
+}
+
+function getCellsDensityColor(cells) {
+  return cells > 50000 ? "#b12117" : cells !== 10000 ? "#dfdf12" : "#053305";
 }
 
 function changeCultureSet() {
@@ -370,7 +354,8 @@ function changeEmblemShape(emblemShape) {
   shapePath ? image.setAttribute("d", shapePath) : image.removeAttribute("d");
 
   const specificShape = ["culture", "state", "random"].includes(emblemShape) ? null : emblemShape;
-  if (emblemShape === "random") pack.cultures.filter(c => !c.removed).forEach(c => (c.shield = Cultures.getRandomShield()));
+  if (emblemShape === "random")
+    pack.cultures.filter(c => !c.removed).forEach(c => (c.shield = Cultures.getRandomShield()));
 
   const rerenderCOA = (id, coa) => {
     const coaEl = document.getElementById(id);
@@ -483,43 +468,50 @@ function changeZoomExtent(value) {
   zoom.scaleTo(svg, scale);
 }
 
-// control stored options logic
+// restore options stored in localStorage
 function applyStoredOptions() {
-  if (!localStorage.getItem("mapWidth") || !localStorage.getItem("mapHeight")) {
+  if (!stored("mapWidth") || !stored("mapHeight")) {
     mapWidthInput.value = window.innerWidth;
     mapHeightInput.value = window.innerHeight;
   }
 
-  if (localStorage.getItem("distanceUnit")) applyOption(distanceUnitInput, localStorage.getItem("distanceUnit"));
-  if (localStorage.getItem("heightUnit")) applyOption(heightUnit, localStorage.getItem("heightUnit"));
-
-  for (let i = 0; i < localStorage.length; i++) {
-    const stored = localStorage.key(i);
-    const value = localStorage.getItem(stored);
-
-    if (stored === "speakerVoice") continue;
-    const input = document.getElementById(stored + "Input") || document.getElementById(stored);
-    const output = document.getElementById(stored + "Output");
-    if (input) input.value = value;
-    if (output) output.value = value;
-    lock(stored);
-
-    // add saved style presets to options
-    if (stored.slice(0, 5) === "style") applyOption(stylePreset, stored, stored.slice(5));
+  const heightmapId = stored("template");
+  if (heightmapId) {
+    const name = heightmapTemplates[heightmapId]?.name || precreatedHeightmaps[heightmapId]?.name || heightmapId;
+    applyOption(byId("templateInput"), heightmapId, name);
   }
 
-  if (localStorage.getItem("winds"))
+  if (stored("distanceUnit")) applyOption(distanceUnitInput, stored("distanceUnit"));
+  if (stored("heightUnit")) applyOption(heightUnit, stored("heightUnit"));
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+
+    if (key === "speakerVoice") continue;
+    const input = byId(key + "Input") || byId(key);
+    const output = byId(key + "Output");
+
+    const value = stored(key);
+    if (input) input.value = value;
+    if (output) output.value = value;
+    lock(key);
+
+    // add saved style presets to options
+    if (key.slice(0, 5) === "style") applyOption(stylePreset, key, key.slice(5));
+  }
+
+  if (stored("winds"))
     options.winds = localStorage
       .getItem("winds")
       .split(",")
       .map(w => +w);
-  if (localStorage.getItem("military")) options.military = JSON.parse(localStorage.getItem("military"));
+  if (stored("military")) options.military = JSON.parse(stored("military"));
 
-  if (localStorage.getItem("tooltipSize")) changeTooltipSize(localStorage.getItem("tooltipSize"));
-  if (localStorage.getItem("regions")) changeStatesNumber(localStorage.getItem("regions"));
+  if (stored("tooltipSize")) changeTooltipSize(stored("tooltipSize"));
+  if (stored("regions")) changeStatesNumber(stored("regions"));
 
   uiSizeInput.max = uiSizeOutput.max = getUImaxSize();
-  if (localStorage.getItem("uiSize")) changeUIsize(localStorage.getItem("uiSize"));
+  if (stored("uiSize")) changeUIsize(stored("uiSize"));
   else changeUIsize(minmax(rn(mapWidthInput.value / 1280, 1), 1, 2.5));
 
   // search params overwrite stored and default options
@@ -529,19 +521,16 @@ function applyStoredOptions() {
   if (width) mapWidthInput.value = width;
   if (height) mapHeightInput.value = height;
 
-  const transparency = localStorage.getItem("transparency") || 5;
-  const themeColor = localStorage.getItem("themeColor");
+  const transparency = stored("transparency") || 5;
+  const themeColor = stored("themeColor");
   changeDialogsTheme(themeColor, transparency);
 
-  // set shape rendering
-  viewbox.attr("shape-rendering", shapeRendering.value);
-
+  setRendering(shapeRendering.value);
   options.stateLabelsMode = stateLabelsModeInput.value;
 }
 
 // randomize options if randomization is allowed (not locked or options='default')
 function randomizeOptions() {
-  Math.random = aleaPRNG(seed); // reset seed to initial one
   const randomize = new URL(window.location.href).searchParams.get("options") === "default"; // ignore stored options
 
   // 'Options' settings
@@ -562,8 +551,10 @@ function randomizeOptions() {
   if (randomize || !locked("prec")) precInput.value = precOutput.value = gauss(100, 40, 5, 500);
   const tMax = 30,
     tMin = -30; // temperature extremes
-  if (randomize || !locked("temperatureEquator")) temperatureEquatorOutput.value = temperatureEquatorInput.value = rand(tMax - 10, tMax);
-  if (randomize || !locked("temperaturePole")) temperaturePoleOutput.value = temperaturePoleInput.value = rand(tMin, tMin + 30);
+  if (randomize || !locked("temperatureEquator"))
+    temperatureEquatorOutput.value = temperatureEquatorInput.value = rand(tMax - 10, tMax);
+  if (randomize || !locked("temperaturePole"))
+    temperaturePoleOutput.value = temperaturePoleInput.value = rand(tMin, tMin + 30);
 
   // 'Units Editor' settings
   const US = navigator.language === "en-US";
@@ -578,22 +569,13 @@ function randomizeOptions() {
 
 // select heightmap template pseudo-randomly
 function randomizeHeightmapTemplate() {
-  const templates = {
-    volcano: 3,
-    highIsland: 19,
-    lowIsland: 9,
-    continents: 16,
-    archipelago: 18,
-    mediterranean: 5,
-    peninsula: 3,
-    pangea: 5,
-    isthmus: 2,
-    atoll: 1,
-    shattered: 7,
-    taklamakan: 1,
-    oldWorld: 11
-  };
-  document.getElementById("templateInput").value = rw(templates);
+  const templates = {};
+  for (const key in heightmapTemplates) {
+    templates[key] = heightmapTemplates[key].probability || 0;
+  }
+  const template = rw(templates);
+  const name = heightmapTemplates[template].name;
+  applyOption(byId("templateInput"), template, name);
 }
 
 // select culture set pseudo-randomly
@@ -610,6 +592,10 @@ function randomizeCultureSet() {
   };
   culturesSet.value = rw(sets);
   changeCultureSet();
+}
+
+function setRendering(value) {
+  viewbox.attr("shape-rendering", value);
 }
 
 // generate current year and era name
@@ -648,6 +634,11 @@ function changeEra() {
   options.era = eraInput.value;
 }
 
+async function openTemplateSelectionDialog() {
+  const HeightmapSelectionDialog = await import("../dynamic/heightmap-selection.js?v=1.87.00");
+  HeightmapSelectionDialog.open();
+}
+
 // remove all saved data from LocalStorage and reload the page
 function restoreDefaultOptions() {
   localStorage.clear();
@@ -657,20 +648,21 @@ function restoreDefaultOptions() {
 // Sticked menu Options listeners
 document.getElementById("sticked").addEventListener("click", function (event) {
   const id = event.target.id;
-  if (id === "newMapButton") regeneratePrompt("sticky button");
+  if (id === "newMapButton") regeneratePrompt();
   else if (id === "saveButton") showSavePane();
   else if (id === "exportButton") showExportPane();
   else if (id === "loadButton") showLoadPane();
   else if (id === "zoomReset") resetZoom(1000);
 });
 
-function regeneratePrompt(source) {
-  if (customization) return tip("New map cannot be generated when edit mode is active, please exit the mode and retry", false, "error");
+function regeneratePrompt(options) {
+  if (customization)
+    return tip("New map cannot be generated when edit mode is active, please exit the mode and retry", false, "error");
   const workingTime = (Date.now() - last(mapHistory).created) / 60000; // minutes
-  if (workingTime < 5) return regenerateMap(source);
+  if (workingTime < 5) return regenerateMap(options);
 
-  alertMessage.innerHTML = `Are you sure you want to generate a new map?<br>
-  All unsaved changes made to the current map will be lost`;
+  alertMessage.innerHTML = /* html */ `Are you sure you want to generate a new map?<br />
+    All unsaved changes made to the current map will be lost`;
   $("#alert").dialog({
     resizable: false,
     title: "Generate new map",
@@ -680,7 +672,7 @@ function regeneratePrompt(source) {
       },
       Generate: function () {
         closeDialogs();
-        regenerateMap(source);
+        regenerateMap(options);
       }
     }
   });
@@ -725,6 +717,11 @@ function showExportPane() {
   });
 }
 
+async function exportToJson(type) {
+  const {exportToJson} = await import("../dynamic/export-json.js");
+  exportToJson(type);
+}
+
 async function showLoadPane() {
   $("#loadMapData").dialog({
     title: "Load map",
@@ -744,23 +741,24 @@ async function showLoadPane() {
     document.getElementById("loadFromDropboxSelect").style.display = "block";
     const loadFromDropboxButtons = document.getElementById("loadFromDropboxButtons");
     const fileSelect = document.getElementById("loadFromDropboxSelect");
-    fileSelect.innerHTML = `<option value="" disabled selected>Loading...</option>`;
+    fileSelect.innerHTML = /* html */ `<option value="" disabled selected>Loading...</option>`;
 
     const files = await Cloud.providers.dropbox.list();
 
     if (!files) {
       loadFromDropboxButtons.style.display = "none";
-      fileSelect.innerHTML = `<option value="" disabled selected>Save files to Dropbox first</option>`;
+      fileSelect.innerHTML = /* html */ `<option value="" disabled selected>Save files to Dropbox first</option>`;
       return;
     }
 
     loadFromDropboxButtons.style.display = "block";
     fileSelect.innerHTML = "";
-    files.forEach(file => {
-      const opt = document.createElement("option");
-      opt.innerText = file.name;
-      opt.value = file.path;
-      fileSelect.appendChild(opt);
+    files.forEach(({name, updated, size, path}) => {
+      const sizeMB = rn(size / 1024 / 1024, 2) + " MB";
+      const updatedOn = new Date(updated).toLocaleDateString();
+      const nameFormatted = `${updatedOn}: ${name} [${sizeMB}]`;
+      const option = new Option(nameFormatted, path);
+      fileSelect.options.add(option);
     });
 
     return;
@@ -833,7 +831,7 @@ function openSaveTiles() {
         loading = setInterval(() => (status.innerHTML += "."), 1000);
         saveTiles().then(() => {
           clearInterval(loading);
-          status.innerHTML = `Done. Check file in "Downloads" (crtl + J)`;
+          status.innerHTML = /* html */ `Done. Check file in "Downloads" (crtl + J)`;
           setTimeout(() => (status.innerHTML = ""), 8000);
         });
       },
@@ -866,7 +864,7 @@ function updateTilesOptions() {
   const sizeY = graphHeight * scale * tilesY;
   const totalSize = sizeX * sizeY;
 
-  tileSize.innerHTML = `${sizeX} x ${sizeY} px`;
+  tileSize.innerHTML = /* html */ `${sizeX} x ${sizeY} px`;
   tileSize.style.color = totalSize > 1e9 ? "#d00b0b" : totalSize > 1e8 ? "#9e6409" : "#1a941a";
 
   // draw tiles
@@ -881,7 +879,10 @@ function updateTilesOptions() {
     }
   }
   const rectsG = "<g fill='none' stroke='#000'>" + rects.join("") + "</g>";
-  const labelsG = "<g fill='#000' stroke='none' text-anchor='middle' dominant-baseline='central' font-size='24px'>" + labels.join("") + "</g>";
+  const labelsG =
+    "<g fill='#000' stroke='none' text-anchor='middle' dominant-baseline='central' font-size='24px'>" +
+    labels.join("") +
+    "</g>";
   debug.html(rectsG + labelsG);
 }
 
@@ -933,7 +934,8 @@ async function enter3dView(type) {
 
   canvas.style.display = "block";
   canvas.onmouseenter = () => {
-    const help = "Left mouse to change angle, middle mouse / mousewheel to zoom, right mouse to pan. <b>O</b> to toggle options";
+    const help =
+      "Left mouse to change angle, middle mouse / mousewheel to zoom, right mouse to pan. <b>O</b> to toggle options";
     +canvas.dataset.hovered > 2 ? tip("") : tip(help);
     canvas.dataset.hovered = (+canvas.dataset.hovered | 0) + 1;
   };

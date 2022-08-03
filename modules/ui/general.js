@@ -3,7 +3,7 @@
 
 // fit full-screen map if window is resized
 window.addEventListener("resize", function (e) {
-  if (localStorage.getItem("mapWidth") && localStorage.getItem("mapHeight")) return;
+  if (stored("mapWidth") && stored("mapHeight")) return;
   mapWidthInput.value = window.innerWidth;
   mapHeightInput.value = window.innerHeight;
   changeMapSize();
@@ -21,18 +21,22 @@ document.getElementById("dialogs").addEventListener("mousemove", showDataTip);
 document.getElementById("optionsContainer").addEventListener("mousemove", showDataTip);
 document.getElementById("exitCustomization").addEventListener("mousemove", showDataTip);
 
-function tip(tip = "Tip is undefined", main, type, time) {
+const tipBackgroundMap = {
+  info: "linear-gradient(0.1turn, #ffffff00, #5e5c5c80, #ffffff00)",
+  success: "linear-gradient(0.1turn, #ffffff00, #127912cc, #ffffff00)",
+  warn: "linear-gradient(0.1turn, #ffffff00, #be5d08cc, #ffffff00)",
+  error: "linear-gradient(0.1turn, #ffffff00, #e11d1dcc, #ffffff00)"
+};
+
+function tip(tip = "Tip is undefined", main = false, type = "info", time = 0) {
   tooltip.innerHTML = tip;
-  tooltip.style.background = "linear-gradient(0.1turn, #ffffff00, #5e5c5c80, #ffffff00)";
-  if (type === "error") tooltip.style.background = "linear-gradient(0.1turn, #ffffff00, #e11d1dcc, #ffffff00)";
-  else if (type === "warn") tooltip.style.background = "linear-gradient(0.1turn, #ffffff00, #be5d08cc, #ffffff00)";
-  else if (type === "success") tooltip.style.background = "linear-gradient(0.1turn, #ffffff00, #127912cc, #ffffff00)";
+  tooltip.style.background = tipBackgroundMap[type];
 
   if (main) {
     tooltip.dataset.main = tip;
     tooltip.dataset.color = tooltip.style.background;
   }
-  if (time) setTimeout(() => clearMainTip(), time);
+  if (time) setTimeout(clearMainTip, time);
 }
 
 function showMainTip() {
@@ -47,11 +51,16 @@ function clearMainTip() {
 }
 
 // show tip at the bottom of the screen, consider possible translation
-function showDataTip(e) {
-  if (!e.target) return;
-  let dataTip = e.target.dataset.tip;
-  if (!dataTip && e.target.parentNode.dataset.tip) dataTip = e.target.parentNode.dataset.tip;
+function showDataTip(event) {
+  if (!event.target) return;
+
+  let dataTip = event.target.dataset.tip;
+  if (!dataTip && event.target.parentNode.dataset.tip) dataTip = event.target.parentNode.dataset.tip;
   if (!dataTip) return;
+
+  const shortcut = event.target.dataset.shortcut;
+  if (shortcut && !MOBILE) dataTip += `. Shortcut: ${shortcut}`;
+
   //const tooltip = lang === "en" ? dataTip : translate(e.target.dataset.t || e.target.parentNode.dataset.t, dataTip);
   tip(dataTip);
 }
@@ -65,22 +74,22 @@ function showElementLockTip(event) {
   }
 }
 
-const moved = debounce(mouseMove, 100);
-function mouseMove() {
+const onMouseMove = debounce(handleMouseMove, 100);
+function handleMouseMove() {
   const point = d3.mouse(this);
   const i = findCell(point[0], point[1]); // pack cell id
   if (i === undefined) return;
 
   showNotes(d3.event);
-  const g = findGridCell(point[0], point[1]); // grid cell id
+  const gridCell = findGridCell(point[0], point[1], grid);
   if (tooltip.dataset.main) showMainTip();
-  else showMapTooltip(point, d3.event, i, g);
-  if (cellInfo.offsetParent) updateCellInfo(point, i, g);
+  else showMapTooltip(point, d3.event, i, gridCell);
+  if (cellInfo?.offsetParent) updateCellInfo(point, i, gridCell);
 }
 
 // show note box on hover (if any)
 function showNotes(e) {
-  if (notesEditor.offsetParent) return;
+  if (notesEditor?.offsetParent) return;
   let id = e.target.id || e.target.parentNode.id || e.target.parentNode.parentNode.id;
   if (e.target.parentNode.parentNode.id === "burgLabels") id = "burg" + e.target.dataset.id;
   else if (e.target.parentNode.parentNode.id === "burgIcons") id = "burg" + e.target.dataset.id;
@@ -90,7 +99,7 @@ function showNotes(e) {
     document.getElementById("notes").style.display = "block";
     document.getElementById("notesHeader").innerHTML = note.name;
     document.getElementById("notesBody").innerHTML = note.legend;
-  } else if (!options.pinNotes && !markerEditor.offsetParent) {
+  } else if (!options.pinNotes && !markerEditor?.offsetParent) {
     document.getElementById("notes").style.display = "none";
     document.getElementById("notesHeader").innerHTML = "";
     document.getElementById("notesBody").innerHTML = "";
@@ -112,7 +121,11 @@ function showMapTooltip(point, e, i, g) {
   if (group === "emblems" && e.target.tagName === "use") {
     const parent = e.target.parentNode;
     const [g, type] =
-      parent.id === "burgEmblems" ? [pack.burgs, "burg"] : parent.id === "provinceEmblems" ? [pack.provinces, "province"] : [pack.states, "state"];
+      parent.id === "burgEmblems"
+        ? [pack.burgs, "burg"]
+        : parent.id === "provinceEmblems"
+        ? [pack.provinces, "province"]
+        : [pack.states, "state"];
     const i = +e.target.dataset.i;
     if (event.shiftKey) highlightEmblemElement(type, g[i]);
 
@@ -129,7 +142,7 @@ function showMapTooltip(point, e, i, g) {
     const r = pack.rivers.find(r => r.i === river);
     const name = r ? r.name + " " + r.type : "";
     tip(name + ". Click to edit");
-    if (riversOverview.offsetParent) highlightEditorLine(riversOverview, river, 5000);
+    if (riversOverview?.offsetParent) highlightEditorLine(riversOverview, river, 5000);
     return;
   }
 
@@ -142,7 +155,7 @@ function showMapTooltip(point, e, i, g) {
     const b = pack.burgs[burg];
     const population = si(b.population * populationRate * urbanization);
     tip(`${b.name}. Population: ${population}. Click to edit`);
-    if (burgsOverview.offsetParent) highlightEditorLine(burgsOverview, burg, 5000);
+    if (burgsOverview?.offsetParent) highlightEditorLine(burgsOverview, burg, 5000);
     return;
   }
   if (group === "labels") return tip("Click to edit the Label");
@@ -152,8 +165,10 @@ function showMapTooltip(point, e, i, g) {
   if (group === "ruler") {
     const tag = e.target.tagName;
     const className = e.target.getAttribute("class");
-    if (tag === "circle" && className === "edge") return tip("Drag to adjust. Hold Ctrl and drag to add a point. Click to remove the point");
-    if (tag === "circle" && className === "control") return tip("Drag to adjust. Hold Shift and drag to keep axial direction. Click to remove the point");
+    if (tag === "circle" && className === "edge")
+      return tip("Drag to adjust. Hold Ctrl and drag to add a point. Click to remove the point");
+    if (tag === "circle" && className === "control")
+      return tip("Drag to adjust. Hold Shift and drag to keep axial direction. Click to remove the point");
     if (tag === "circle") return tip("Drag to adjust the measurer");
     if (tag === "polyline") return tip("Click on drag to add a control point");
     if (tag === "path") return tip("Drag to move the measurer");
@@ -176,7 +191,7 @@ function showMapTooltip(point, e, i, g) {
   if (group === "zones") {
     const zone = path[path.length - 8];
     tip(zone.dataset.description);
-    if (zonesEditor.offsetParent) highlightEditorLine(zonesEditor, zone.id, 5000);
+    if (zonesEditor?.offsetParent) highlightEditorLine(zonesEditor, zone.id, 5000);
     return;
   }
 
@@ -189,31 +204,31 @@ function showMapTooltip(point, e, i, g) {
   else if (layerIsOn("toggleBiomes") && pack.cells.biome[i]) {
     const biome = pack.cells.biome[i];
     tip("Biome: " + biomesData.name[biome]);
-    if (biomesEditor.offsetParent) highlightEditorLine(biomesEditor, biome);
+    if (biomesEditor?.offsetParent) highlightEditorLine(biomesEditor, biome);
   } else if (layerIsOn("toggleReligions") && pack.cells.religion[i]) {
     const religion = pack.cells.religion[i];
     const r = pack.religions[religion];
     const type = r.type === "Cult" || r.type == "Heresy" ? r.type : r.type + " religion";
     tip(type + ": " + r.name);
-    if (religionsEditor.offsetParent) highlightEditorLine(religionsEditor, religion);
+    if (religionsEditor?.offsetParent) highlightEditorLine(religionsEditor, religion);
   } else if (pack.cells.state[i] && (layerIsOn("toggleProvinces") || layerIsOn("toggleStates"))) {
     const state = pack.cells.state[i];
     const stateName = pack.states[state].fullName;
     const province = pack.cells.province[i];
     const prov = province ? pack.provinces[province].fullName + ", " : "";
     tip(prov + stateName);
-    if (statesEditor.offsetParent) highlightEditorLine(statesEditor, state);
-    if (diplomacyEditor.offsetParent) highlightEditorLine(diplomacyEditor, state);
-    if (militaryOverview.offsetParent) highlightEditorLine(militaryOverview, state);
-    if (provincesEditor.offsetParent) highlightEditorLine(provincesEditor, province);
+    if (document.getElementById("statesEditor")?.offsetParent) highlightEditorLine(statesEditor, state);
+    if (document.getElementById("diplomacyEditor")?.offsetParent) highlightEditorLine(diplomacyEditor, state);
+    if (document.getElementById("militaryOverview")?.offsetParent) highlightEditorLine(militaryOverview, state);
+    if (document.getElementById("provincesEditor")?.offsetParent) highlightEditorLine(provincesEditor, province);
   } else if (layerIsOn("toggleCultures") && pack.cells.culture[i]) {
     const culture = pack.cells.culture[i];
     tip("Culture: " + pack.cultures[culture].name);
-    if (culturesEditor.offsetParent) highlightEditorLine(culturesEditor, culture);
+    if (document.getElementById("culturesEditor")?.offsetParent) highlightEditorLine(culturesEditor, culture);
   } else if (layerIsOn("toggleHeight")) tip("Height: " + getFriendlyHeight(point));
 }
 
-function highlightEditorLine(editor, id, timeout = 15000) {
+function highlightEditorLine(editor, id, timeout = 10000) {
   Array.from(editor.getElementsByClassName("states hovered")).forEach(el => el.classList.remove("hovered")); // clear all hovered
   const hovered = Array.from(editor.querySelectorAll("div")).find(el => el.dataset.id == id);
   if (hovered) hovered.classList.add("hovered"); // add hovered class
@@ -233,17 +248,25 @@ function updateCellInfo(point, i, g) {
   infoLon.innerHTML = toDMS(getLongitude(x, 4), "lon");
 
   infoCell.innerHTML = i;
-  const unit = areaUnit.value === "square" ? " " + distanceUnitInput.value + "²" : " " + areaUnit.value;
-  infoArea.innerHTML = cells.area[i] ? si(cells.area[i] * distanceScaleInput.value ** 2) + unit : "n/a";
+  infoArea.innerHTML = cells.area[i] ? si(getArea(cells.area[i])) + " " + getAreaUnit() : "n/a";
   infoEvelation.innerHTML = getElevation(pack.features[f], pack.cells.h[i]);
-  infoDepth.innerHTML = getDepth(pack.features[f], pack.cells.h[i], point);
+  infoDepth.innerHTML = getDepth(pack.features[f], point);
   infoTemp.innerHTML = convertTemperature(grid.cells.temp[g]);
   infoPrec.innerHTML = cells.h[i] >= 20 ? getFriendlyPrecipitation(i) : "n/a";
   infoRiver.innerHTML = cells.h[i] >= 20 && cells.r[i] ? getRiverInfo(cells.r[i]) : "no";
-  infoState.innerHTML = cells.h[i] >= 20 ? (cells.state[i] ? `${pack.states[cells.state[i]].fullName} (${cells.state[i]})` : "neutral lands (0)") : "no";
-  infoProvince.innerHTML = cells.province[i] ? `${pack.provinces[cells.province[i]].fullName} (${cells.province[i]})` : "no";
+  infoState.innerHTML =
+    cells.h[i] >= 20
+      ? cells.state[i]
+        ? `${pack.states[cells.state[i]].fullName} (${cells.state[i]})`
+        : "neutral lands (0)"
+      : "no";
+  infoProvince.innerHTML = cells.province[i]
+    ? `${pack.provinces[cells.province[i]].fullName} (${cells.province[i]})`
+    : "no";
   infoCulture.innerHTML = cells.culture[i] ? `${pack.cultures[cells.culture[i]].name} (${cells.culture[i]})` : "no";
-  infoReligion.innerHTML = cells.religion[i] ? `${pack.religions[cells.religion[i]].name} (${cells.religion[i]})` : "no";
+  infoReligion.innerHTML = cells.religion[i]
+    ? `${pack.religions[cells.religion[i]].name} (${cells.religion[i]})`
+    : "no";
   infoPopulation.innerHTML = getFriendlyPopulation(i);
   infoBurg.innerHTML = cells.burg[i] ? pack.burgs[cells.burg[i]].name + " (" + cells.burg[i] + ")" : "no";
   infoFeature.innerHTML = f ? pack.features[f].group + " (" + f + ")" : "n/a";
@@ -268,11 +291,11 @@ function getElevation(f, h) {
 }
 
 // get water depth
-function getDepth(f, h, p) {
+function getDepth(f, p) {
   if (f.land) return "0 " + heightUnit.value; // land: 0
 
   // lake: difference between surface and bottom
-  const gridH = grid.cells.h[findGridCell(p[0], p[1])];
+  const gridH = grid.cells.h[findGridCell(p[0], p[1], grid)];
   if (f.type === "lake") {
     const depth = gridH === 19 ? f.height / 2 : gridH;
     return getHeight(depth, "abs");
@@ -282,9 +305,9 @@ function getDepth(f, h, p) {
 }
 
 // get user-friendly (real-world) height value from map data
-function getFriendlyHeight(p) {
-  const packH = pack.cells.h[findCell(p[0], p[1])];
-  const gridH = grid.cells.h[findGridCell(p[0], p[1])];
+function getFriendlyHeight([x, y]) {
+  const packH = pack.cells.h[findCell(x, y)];
+  const gridH = grid.cells.h[findGridCell(x, y, grid)];
   const h = packH < 20 ? gridH : packH;
   return getHeight(h);
 }
@@ -292,8 +315,7 @@ function getFriendlyHeight(p) {
 function getHeight(h, abs) {
   const unit = heightUnit.value;
   let unitRatio = 3.281; // default calculations are in feet
-  if (unit === "m") unitRatio = 1;
-  // if meter
+  if (unit === "m") unitRatio = 1; // if meter
   else if (unit === "f") unitRatio = 0.5468; // if fathom
 
   let height = -990;
@@ -304,10 +326,14 @@ function getHeight(h, abs) {
   return rn(height * unitRatio) + " " + unit;
 }
 
+function getPrecipitation(prec) {
+  return prec * 100 + " mm";
+}
+
 // get user-friendly (real-world) precipitation value from map data
 function getFriendlyPrecipitation(i) {
   const prec = grid.cells.prec[pack.cells.g[i]];
-  return prec * 100 + " mm";
+  return getPrecipitation(prec);
 }
 
 function getRiverInfo(id) {
@@ -391,7 +417,8 @@ function highlightEmblemElement(type, el) {
 // assign lock behavior
 document.querySelectorAll("[data-locked]").forEach(function (e) {
   e.addEventListener("mouseover", function (event) {
-    if (this.className === "icon-lock") tip("Click to unlock the option and allow it to be randomized on new map generation");
+    if (this.className === "icon-lock")
+      tip("Click to unlock the option and allow it to be randomized on new map generation");
     else tip("Click to lock the option and always use the current value on new map generation");
     event.stopPropagation();
   });
@@ -405,8 +432,8 @@ document.querySelectorAll("[data-locked]").forEach(function (e) {
 
 // lock option
 function lock(id) {
-  const input = document.querySelector("[data-stored='" + id + "']");
-  if (input) localStorage.setItem(id, input.value);
+  const input = document.querySelector('[data-stored="' + id + '"]');
+  if (input) store(id, input.value);
   const el = document.getElementById("lock_" + id);
   if (!el) return;
   el.dataset.locked = 1;
@@ -428,9 +455,14 @@ function locked(id) {
   return lockEl.dataset.locked == 1;
 }
 
-// check if option is stored in localStorage
-function stored(option) {
-  return localStorage.getItem(option);
+// return key value stored in localStorage or null
+function stored(key) {
+  return localStorage.getItem(key) || null;
+}
+
+// store key value in localStorage
+function store(key, value) {
+  return localStorage.setItem(key, value);
 }
 
 // assign skeaker behaviour
@@ -450,10 +482,10 @@ function speak(text) {
 }
 
 // apply drop-down menu option. If the value is not in options, add it
-function applyOption(select, id, name = id) {
-  const custom = !Array.from(select.options).some(o => o.value == id);
-  if (custom) select.options.add(new Option(name, id));
-  select.value = id;
+function applyOption($select, value, name = value) {
+  const isExisting = Array.from($select.options).some(o => o.value === value);
+  if (!isExisting) $select.options.add(new Option(name, value));
+  $select.value = value;
 }
 
 // show info about the generator in a popup
@@ -463,19 +495,25 @@ function showInfo() {
   const Patreon = link("https://www.patreon.com/azgaar", "Patreon");
   const Armoria = link("https://azgaar.github.io/Armoria", "Armoria");
 
-  const QuickStart = link("https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Quick-Start-Tutorial", "Quick start tutorial");
+  const QuickStart = link(
+    "https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Quick-Start-Tutorial",
+    "Quick start tutorial"
+  );
   const QAA = link("https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Q&A", "Q&A page");
   const VideoTutorial = link("https://youtube.com/playlist?list=PLtgiuDC8iVR2gIG8zMTRn7T_L0arl9h1C", "Video tutorial");
 
-  alertMessage.innerHTML = `
-    <b>Fantasy Map Generator</b> (FMG) is a free open-source application.
-    It means that you own all created maps and can use them as you wish.
+  alertMessage.innerHTML = /* html */ `<b>Fantasy Map Generator</b> (FMG) is a free open-source application. It means that you own all created maps and can use them as
+    you wish.
 
-    <p>The development is community-backed, you can donate on ${Patreon}.
-    You can also help creating overviews, tutorials and spreding the word about the Generator.</p>
+    <p>
+      The development is community-backed, you can donate on ${Patreon}. You can also help creating overviews, tutorials and spreding the word about the
+      Generator.
+    </p>
 
-    <p>The best way to get help is to contact the community on ${Discord} and ${Reddit}.
-    Before asking questions, please check out the ${QuickStart}, the ${QAA}, and ${VideoTutorial}.</p>
+    <p>
+      The best way to get help is to contact the community on ${Discord} and ${Reddit}. Before asking questions, please check out the ${QuickStart}, the ${QAA},
+      and ${VideoTutorial}.
+    </p>
 
     <p>Check out our another project: ${Armoria} — heraldry generator and editor.</p>
 

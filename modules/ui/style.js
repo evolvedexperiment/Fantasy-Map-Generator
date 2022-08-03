@@ -546,15 +546,15 @@ styleFontAdd.addEventListener("click", function () {
     buttons: {
       Add: function () {
         const family = addFontNameInput.value;
+        const src = addFontURLInput.value;
+        const method = addFontMethod.value;
+
         if (!family) return tip("Please provide a font name", false, "error");
 
-        const existingFont = fonts.find(font => font.family === family);
+        const existingFont = method === "fontURL" ? fonts.find(font => font.family === family && font.src === src) : fonts.find(font => font.family === family);
         if (existingFont) return tip("The font is already added", false, "error");
 
-        const method = addFontMethod.value;
-        const url = addFontURLInput.value;
-
-        if (method === "fontURL") addWebFont(family, url);
+        if (method === "fontURL") addWebFont(family, src);
         else if (method === "googleFont") addGoogleFont(family);
         else if (method === "localFont") addLocalFont(family);
 
@@ -574,20 +574,20 @@ addFontMethod.addEventListener("change", function () {
 });
 
 styleFontSize.addEventListener("change", function () {
-  changeFontSize(+this.value);
+  changeFontSize(getEl(), +this.value);
 });
 
 styleFontPlus.addEventListener("click", function () {
   const size = +getEl().attr("data-size") + 1;
-  changeFontSize(Math.min(size, 999));
+  changeFontSize(getEl(), Math.min(size, 999));
 });
 
 styleFontMinus.addEventListener("click", function () {
   const size = +getEl().attr("data-size") - 1;
-  changeFontSize(Math.max(size, 1));
+  changeFontSize(getEl(), Math.max(size, 1));
 });
 
-function changeFontSize(size) {
+function changeFontSize(el, size) {
   styleFontSize.value = size;
 
   const getSizeOnScale = element => {
@@ -600,7 +600,7 @@ function changeFontSize(size) {
   };
 
   const scaleSize = getSizeOnScale(styleElementSelect.value);
-  getEl().attr("data-size", size).attr("font-size", scaleSize);
+  el.attr("data-size", size).attr("font-size", scaleSize);
 
   if (styleElementSelect.value === "legend") redrawLegend();
 }
@@ -652,6 +652,10 @@ styleIconSizeMinus.addEventListener("click", function () {
 
 function changeIconSize(size, group) {
   const el = group ? anchors.select("#" + group) : getEl();
+  if (!el.size()) {
+    console.warn(`Group ${group} not found. Can not set icon size!`);
+    return;
+  }
   const oldSize = +el.attr("size");
   const shift = (size - oldSize) / 2;
   el.attr("size", size);
@@ -712,8 +716,8 @@ emblemsBurgSizeInput.addEventListener("change", drawEmblems);
 
 // request a URL to image to be used as a texture
 function textureProvideURL() {
-  alertMessage.innerHTML = `Provide an image URL to be used as a texture:
-    <input id="textureURL" type="url" style="width: 100%" placeholder="http://www.example.com/image.jpg" oninput="fetchTextureURL(this.value)">
+  alertMessage.innerHTML = /* html */ `Provide an image URL to be used as a texture:
+    <input id="textureURL" type="url" style="width: 100%" placeholder="http://www.example.com/image.jpg" oninput="fetchTextureURL(this.value)" />
     <canvas id="texturePreview" width="256px" height="144px"></canvas>`;
   $("#alert").dialog({
     resizable: false,

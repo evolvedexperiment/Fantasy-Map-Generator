@@ -28,8 +28,7 @@ async function createSharableDropboxLink() {
   try {
     url = await Cloud.providers.dropbox.getLink(mapFile);
   } catch {
-    tip("Dropbox API error. Can not create link.", true, "error", 2000);
-    return;
+    return tip("Dropbox API error. Can not create link.", true, "error", 2000);
   }
 
   const fmg = window.location.href.split("?")[0];
@@ -50,8 +49,8 @@ function loadMapPrompt(blob) {
     return;
   }
 
-  alertMessage.innerHTML = `Are you sure you want to load saved map?<br>
-  All unsaved changes made to the current map will be lost`;
+  alertMessage.innerHTML = /* html */ `Are you sure you want to load saved map?<br />
+    All unsaved changes made to the current map will be lost`;
   $("#alert").dialog({
     resizable: false,
     title: "Load saved map",
@@ -94,9 +93,10 @@ function loadMapFromURL(maplink, random) {
 
 function showUploadErrorMessage(error, URL, random) {
   ERROR && console.error(error);
-  alertMessage.innerHTML = `Cannot load map from the ${link(URL, "link provided")}.
-    ${random ? `A new random map is generated. ` : ""}
-    Please ensure the linked file is reachable and CORS is allowed on server side`;
+  alertMessage.innerHTML = /* html */ `Cannot load map from the ${link(URL, "link provided")}. ${
+    random ? `A new random map is generated. ` : ""
+  } Please ensure the
+  linked file is reachable and CORS is allowed on server side`;
   $("#alert").dialog({
     title: "Loading error",
     width: "32em",
@@ -205,7 +205,7 @@ async function parseLoadedData(data) {
     void (function parseSettings() {
       const settings = data[1].split("|");
       if (settings[0]) applyOption(distanceUnitInput, settings[0]);
-      if (settings[1]) distanceScaleInput.value = distanceScaleOutput.value = settings[1];
+      if (settings[1]) distanceScale = distanceScaleInput.value = distanceScaleOutput.value = settings[1];
       if (settings[2]) areaUnit.value = settings[2];
       if (settings[3]) applyOption(heightUnit, settings[3]);
       if (settings[4]) heightExponentInput.value = heightExponentOutput.value = settings[4];
@@ -243,7 +243,10 @@ async function parseLoadedData(data) {
         const usedFonts = JSON.parse(data[34]);
         usedFonts.forEach(usedFont => {
           const {family: usedFamily, unicodeRange: usedRange, variant: usedVariant} = usedFont;
-          const defaultFont = fonts.find(({family, unicodeRange, variant}) => family === usedFamily && unicodeRange === usedRange && variant === usedVariant);
+          const defaultFont = fonts.find(
+            ({family, unicodeRange, variant}) =>
+              family === usedFamily && unicodeRange === usedRange && variant === usedVariant
+          );
           if (!defaultFont) fonts.push(usedFont);
           declareFont(usedFont);
         });
@@ -323,7 +326,11 @@ async function parseLoadedData(data) {
 
     void (function parseGridData() {
       grid = JSON.parse(data[6]);
-      calculateVoronoi(grid, grid.points);
+
+      const {cells, vertices} = calculateVoronoi(grid.points, grid.boundary);
+      grid.cells = cells;
+      grid.vertices = vertices;
+
       grid.cells.h = Uint8Array.from(data[7].split(","));
       grid.cells.prec = Uint8Array.from(data[8].split(","));
       grid.cells.f = Uint16Array.from(data[9].split(","));
@@ -332,7 +339,6 @@ async function parseLoadedData(data) {
     })();
 
     void (function parsePackData() {
-      pack = {};
       reGraph();
       reMarkFeatures();
       pack.features = JSON.parse(data[12]);
@@ -417,21 +423,24 @@ async function parseLoadedData(data) {
 
     void (function restoreEvents() {
       scaleBar.on("mousemove", () => tip("Click to open Units Editor")).on("click", () => editUnits());
-      legend.on("mousemove", () => tip("Drag to change the position. Click to hide the legend")).on("click", () => clearLegend());
+      legend
+        .on("mousemove", () => tip("Drag to change the position. Click to hide the legend"))
+        .on("click", () => clearLegend());
     })();
 
     {
       // dynamically import and run auto-udpdate script
-      const version = parseFloat(params[0]);
-      const {resolveVersionConflicts} = await import("./auto-update.js");
-      resolveVersionConflicts(version);
+      const versionNumber = parseFloat(params[0]);
+      const {resolveVersionConflicts} = await import("../dynamic/auto-update.js?v=1.87.08");
+      resolveVersionConflicts(versionNumber);
     }
 
     void (function checkDataIntegrity() {
       const cells = pack.cells;
 
       if (pack.cells.i.length !== pack.cells.state.length) {
-        ERROR && console.error("Striping issue. Map data is corrupted. The only solution is to edit the heightmap in erase mode");
+        const message = "Data Integrity Check. Striping issue. To fix edit the heightmap in erase mode";
+        ERROR && console.error(message);
       }
 
       const invalidStates = [...new Set(cells.state)].filter(s => !pack.states[s] || pack.states[s].removed);
@@ -441,7 +450,9 @@ async function parseLoadedData(data) {
         ERROR && console.error("Data Integrity Check. Invalid state", s, "is assigned to cells", invalidCells);
       });
 
-      const invalidProvinces = [...new Set(cells.province)].filter(p => p && (!pack.provinces[p] || pack.provinces[p].removed));
+      const invalidProvinces = [...new Set(cells.province)].filter(
+        p => p && (!pack.provinces[p] || pack.provinces[p].removed)
+      );
       invalidProvinces.forEach(p => {
         const invalidCells = cells.i.filter(i => cells.province[i] === p);
         invalidCells.forEach(i => (cells.province[i] = 0));
@@ -455,11 +466,13 @@ async function parseLoadedData(data) {
         ERROR && console.error("Data Integrity Check. Invalid culture", c, "is assigned to cells", invalidCells);
       });
 
-      const invalidReligions = [...new Set(cells.religion)].filter(r => !pack.religions[r] || pack.religions[r].removed);
+      const invalidReligions = [...new Set(cells.religion)].filter(
+        r => !pack.religions[r] || pack.religions[r].removed
+      );
       invalidReligions.forEach(r => {
         const invalidCells = cells.i.filter(i => cells.religion[i] === r);
         invalidCells.forEach(i => (cells.religion[i] = 0));
-        ERROR && console.error("Data Integrity Check. Invalid religion", c, "is assigned to cells", invalidCells);
+        ERROR && console.error("Data Integrity Check. Invalid religion", r, "is assigned to cells", invalidCells);
       });
 
       const invalidFeatures = [...new Set(cells.f)].filter(f => f && !pack.features[f]);
@@ -484,23 +497,36 @@ async function parseLoadedData(data) {
         ERROR && console.error("Data Integrity Check. Invalid river", r, "is assigned to cells", invalidCells);
       });
 
-      pack.burgs.forEach(b => {
-        if (!b.i || b.removed) return;
-        if (b.port < 0) {
-          ERROR && console.error("Data Integrity Check. Burg", b.i, "has invalid port value", b.port);
-          b.port = 0;
+      pack.burgs.forEach(burg => {
+        if (!burg.i || burg.removed) return;
+        if (burg.cell === undefined || burg.x === undefined || burg.y === undefined) {
+          ERROR &&
+            console.error(
+              `Data Integrity Check. Burg ${burg.i} is missing cell info or coordinates. Removing the burg`
+            );
+          burg.removed = true;
         }
 
-        if (b.cell >= cells.i.length) {
-          ERROR && console.error("Data Integrity Check. Burg", b.i, "is linked to invalid cell", b.cell);
-          b.cell = findCell(b.x, b.y);
-          cells.i.filter(i => cells.burg[i] === b.i).forEach(i => (cells.burg[i] = 0));
-          cells.burg[b.cell] = b.i;
+        if (burg.port < 0) {
+          ERROR && console.error("Data Integrity Check. Burg", burg.i, "has invalid port value", burg.port);
+          burg.port = 0;
         }
 
-        if (b.state && !pack.states[b.state]) {
-          ERROR && console.error("Data Integrity Check. Burg", b.i, "is linked to invalid state", b.state);
-          b.state = 0;
+        if (burg.cell >= cells.i.length) {
+          ERROR && console.error("Data Integrity Check. Burg", burg.i, "is linked to invalid cell", burg.cell);
+          burg.cell = findCell(burg.x, burg.y);
+          cells.i.filter(i => cells.burg[i] === burg.i).forEach(i => (cells.burg[i] = 0));
+          cells.burg[burg.cell] = burg.i;
+        }
+
+        if (burg.state && !pack.states[burg.state]) {
+          ERROR && console.error("Data Integrity Check. Burg", burg.i, "is linked to invalid state", burg.state);
+          burg.state = 0;
+        }
+
+        if (burg.state === undefined) {
+          ERROR && console.error("Data Integrity Check. Burg", burg.i, "has no state data");
+          burg.state = 0;
         }
       });
 
@@ -563,8 +589,7 @@ async function parseLoadedData(data) {
     ERROR && console.error(error);
     clearMainTip();
 
-    alertMessage.innerHTML = `An error is occured on map loading. Select a different file to load,
-      <br>generate a new random map or cancel the loading
+    alertMessage.innerHTML = /* html */ `An error is occured on map loading. Select a different file to load, <br />generate a new random map or cancel the loading
       <p id="errorBox">${parseError(error)}</p>`;
 
     $("#alert").dialog({
